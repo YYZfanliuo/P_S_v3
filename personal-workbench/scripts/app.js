@@ -295,13 +295,20 @@ async function gistPull(token, gistId){
   return { content:f.content, updatedAt:j.updated_at };
 }
 
+/* ---- 构建同步载荷：剔除 token 明文，防止推送到 Gist 后被 GitHub secret scanning 吊销 ---- */
+function buildSyncPayload(){
+  const sync = data.__sync || {};
+  const { token: _stripped, ...safeSync } = sync;
+  return JSON.stringify({ ...data, __sync: safeSync });
+}
+
 async function syncPush(silent=false){
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId) return;
   syncState={status:"pushing",lastSync:syncState.lastSync,error:null}; updateSyncIndicator();
   if(!silent) toast("正在推送...");
   try{
-    const payload=JSON.stringify(data);
+    const payload=buildSyncPayload();
     const ts=await gistPush(cfg.token, cfg.gistId, payload);
     cfg.lastSync=ts; setSyncConfig(cfg);
     syncState={status:"synced",lastSync:ts,error:null};
@@ -2041,7 +2048,7 @@ function renderSettings() {
       try{
         syncState={status:"pushing",lastSync:null,error:null}; renderSyncStatus(); updateSyncIndicator();
         toast("正在创建 Gist...");
-        const payload=JSON.stringify(data);
+        const payload=buildSyncPayload();
         const gid=await gistCreate(token, payload);
         setSyncConfig({ token, gistId:gid, autoSync:$("#f-sync-auto").checked, lastSync:new Date().toISOString() });
         syncState={status:"synced",lastSync:new Date().toISOString(),error:null};
