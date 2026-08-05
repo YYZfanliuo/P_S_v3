@@ -1969,8 +1969,10 @@ function renderSettings() {
         CONFIG.modules.forEach(m => {
           if(!imported[m.key]) imported[m.key] = structuredClone(m.seed || []);
         });
-        // 写入并刷新
+        // 写入并刷新，保留同步配置
+        const preservedSync = data.__sync;
         data = imported;
+        if(preservedSync) data.__sync = preservedSync;
         data.__lastModified = new Date().toISOString();
         store.save();
         buildNav();
@@ -1988,8 +1990,10 @@ function renderSettings() {
   // ---- 数据重置 ----
   $("#btn-reset").onclick = () => {
     if(!confirm("确定要清除全部数据并恢复初始状态吗？此操作不可撤销。")) return;
+    const preservedSync = data.__sync; // 保留同步配置，避免重置后丢失 token
     localStorage.removeItem(CONFIG.storageKey);
     data = store.load();
+    if(preservedSync) data.__sync = preservedSync;
     store.save();
     buildNav();
     render();
