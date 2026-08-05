@@ -4,6 +4,8 @@
 :root {
   /* ---- 页面与表面 ---- */
   --page-bg: #f4f3f0;              /* 页面底色（body 背景） */
+  --page-bg-image: none;            /* 页面底板背景图（DataURL 或 URL） */
+  --page-bg-blur: 12px;             /* 底板背景图模糊度 */
   --surface-card: #fcfbf8;         /* 卡片/面板/输入框/按钮的主背景 */
   --surface-nested: #f7f6f1;       /* 嵌套区域：图标瓦底、ghost 按钮、hero 底 */
 
@@ -119,10 +121,18 @@ body {
   background: var(--page-bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; min-height: 100vh; min-width: 1000px;
 }
-body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   background-image: var(--page-texture); background-size: cover; background-position: center; opacity:.5; }
+/* 底板背景图层（图片 + 模糊 + 遮罩） */
+body::after { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: var(--page-bg-image) center center / cover no-repeat;
+  filter: blur(var(--page-bg-blur)); transform: scale(1.08); }
+body[data-has-pagebg="true"]::after { opacity: 1; }
+body[data-has-pagebg="true"] { background: transparent; }
+body[data-has-pagebg="true"]::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: var(--page-bg); opacity: .55; }
 svg { display: block; }
-.layout { min-height: 100vh; }
+.layout { min-height: 100vh; position: relative; z-index: 1; }
 
 /* ---------- sidebar (固定在左侧，不随内容滚动) ---------- */
 .sidebar { background: linear-gradient(180deg, var(--drawer-bg-top), var(--drawer-bg)); color: var(--drawer-text);

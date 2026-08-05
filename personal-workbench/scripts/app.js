@@ -221,8 +221,10 @@ const store = {
     const d={}; CONFIG.modules.forEach(m=>d[m.key]=structuredClone(m.seed||[]));
     d.__termStartDate = d.__termStartDate || "2026-08-31"; // Default term start date
     d.__greetImage = d.__greetImage || "assets/greet-banner.jpg"; // Default greet image
-    d.__avatar = d.__avatar || "assets/avatar.jpg"; // Default avatar
-    return d;
+  d.__avatar = d.__avatar || "assets/avatar.jpg"; // Default avatar
+  d.__pageBgImage = d.__pageBgImage || ""; // Default page background image (empty = solid color)
+  d.__pageBgBlur = d.__pageBgBlur ?? 12; // Default page background blur in px
+  return d;
   },
   save(){ localStorage.setItem(CONFIG.storageKey, JSON.stringify(data)); },
 };
@@ -1692,6 +1694,19 @@ function renderSettings() {
           <img id="f-avatar-preview" src="${attr(data.__avatar || 'assets/avatar.jpg')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
         </div>
       </div>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div class="field"><label>底板背景图</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="f-pagebg" value="${attr(data.__pageBgImage || '')}" placeholder="URL 或点击上传，留空则纯色" style="flex:1;min-width:120px;"/>
+          <button class="btn ghost sm" id="btn-pagebg-upload">${icon("upload",14,2)}上传</button>
+          <button class="btn ghost sm" id="btn-pagebg-clear" ${!data.__pageBgImage?'disabled':''}>清除</button>
+          <input type="file" id="pagebg-file-input" accept="image/*" hidden/>
+          <img id="f-pagebg-preview" src="${attr(data.__pageBgImage || '')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;${data.__pageBgImage?'':'display:none;'}" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
+        </div>
+      </div>
+      <div class="field"><label>底板模糊度 <span id="f-blur-val" style="color:var(--accent);font-weight:700;">${data.__pageBgBlur ?? 12}px</span></label>
+        <input type="range" id="f-pagebg-blur" min="0" max="40" step="1" value="${data.__pageBgBlur ?? 12}" style="width:100%;accent-color:var(--accent);"/>
+      </div>
       <div style="display:flex;gap:10px;margin-top:10px;">
         <button class="btn ghost" id="btn-settings-cancel">取消</button>
         <button class="btn" id="btn-settings-save">保存</button>
@@ -1752,7 +1767,10 @@ function renderSettings() {
     CONFIG.slogan = $("#f-slogan").value.trim();
     data.__greetImage = $("#f-greet-image").value.trim();
     data.__avatar = $("#f-avatar").value.trim();
+    data.__pageBgImage = $("#f-pagebg").value.trim();
+    data.__pageBgBlur = parseInt($("#f-pagebg-blur").value) || 0;
     persist();
+    applyPageBg();
     go("home");
   };
 
@@ -1825,6 +1843,57 @@ function renderSettings() {
       toast("头像已加载，点击保存生效");
     });
     e.target.value = "";
+  };
+
+  // ---- 底板背景图 ----
+  const pagebgInput = $("#f-pagebg");
+  const pagebgPreview = $("#f-pagebg-preview");
+  const pagebgFileInput = $("#pagebg-file-input");
+  const blurSlider = $("#f-pagebg-blur");
+  const blurVal = $("#f-blur-val");
+
+  // URL 输入实时预览
+  pagebgInput.oninput = () => {
+    const url = pagebgInput.value.trim();
+    const resolved = url && !url.startsWith("data:") && !url.startsWith("http") ? new URL(url, document.baseURI).href : url;
+    pagebgPreview.src = resolved;
+    pagebgPreview.style.display = url ? 'inline-block' : 'none';
+    document.body.style.setProperty('--page-bg-image', resolved ? `url('${resolved}')` : 'none');
+    document.body.setAttribute('data-has-pagebg', url ? 'true' : 'false');
+    $("#btn-pagebg-clear").disabled = !url;
+  };
+
+  // 上传本地图片
+  $("#btn-pagebg-upload").onclick = () => pagebgFileInput.click();
+  pagebgFileInput.onchange = e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    compressImage(f, 1920, 1080, 0.8, dataUrl => {
+      pagebgInput.value = dataUrl;
+      pagebgPreview.src = dataUrl;
+      pagebgPreview.style.display = 'inline-block';
+      document.body.style.setProperty('--page-bg-image', `url('${dataUrl}')`);
+      document.body.setAttribute('data-has-pagebg', 'true');
+      $("#btn-pagebg-clear").disabled = false;
+      toast("底板背景图已加载，点击保存生效");
+    });
+    e.target.value = "";
+  };
+
+  // 清除底板背景图
+  $("#btn-pagebg-clear").onclick = () => {
+    pagebgInput.value = "";
+    pagebgPreview.style.display = 'none';
+    document.body.style.setProperty('--page-bg-image', 'none');
+    document.body.setAttribute('data-has-pagebg', 'false');
+    $("#btn-pagebg-clear").disabled = true;
+  };
+
+  // 模糊度滑块实时预览
+  blurSlider.oninput = () => {
+    const v = parseInt(blurSlider.value) || 0;
+    blurVal.textContent = `${v}px`;
+    document.body.style.setProperty('--page-bg-blur', `${v}px`);
   };
 
   // ---- 数据导出 ----
@@ -1983,10 +2052,22 @@ function render(){
   } else renderModule(view); 
 }
 
+/* ---------- page background (底板背景图 + 模糊度) ---------- */
+function applyPageBg(){
+  const img = data.__pageBgImage || "";
+  const blur = data.__pageBgBlur ?? 12;
+  // Resolve relative URLs to absolute (CSS vars resolve relative to stylesheet, not document)
+  const resolved = img && !img.startsWith("data:") && !img.startsWith("http") ? new URL(img, document.baseURI).href : img;
+  document.body.style.setProperty('--page-bg-image', resolved ? `url('${resolved}')` : 'none');
+  document.body.style.setProperty('--page-bg-blur', `${blur}px`);
+  document.body.setAttribute('data-has-pagebg', img ? 'true' : 'false');
+}
+
 function buildNav(){
   $("#brandName").textContent=CONFIG.owner; $("#brandSlogan").textContent=CONFIG.slogan;
   $("#avaImg").src = data.__avatar || "assets/avatar.jpg"; // Update avatar image
   document.body.style.setProperty('--greet-image', `url('${data.__greetImage || "assets/greet-banner.jpg"}')`); // Update background
+  applyPageBg(); // Apply page background image + blur
 
   const groupedModules = {};
   CONFIG.modules.forEach(m => {
