@@ -1680,8 +1680,18 @@ function renderSettings() {
     <div class="card" style="padding:20px;display:flex;flex-direction:column;gap:15px;">
       <div class="field"><label>你的名字</label><input id="f-owner" value="${attr(CONFIG.owner)}"/></div>
       <div class="field"><label>个性签名/标语</label><input id="f-slogan" value="${attr(CONFIG.slogan)}"/></div>
-      <div class="field"><label>首页背景图 URL</label><input id="f-greet-image" value="${attr(data.__greetImage || '')}" placeholder="assets/greet-banner.jpg"/><img id="f-greet-image-preview" src="${attr(data.__greetImage || 'assets/greet-banner.jpg')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;margin-top:5px;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/></div>
-      <div class="field"><label>头像 URL</label><input id="f-avatar" value="${attr(data.__avatar || '')}" placeholder="assets/avatar.jpg"/><img id="f-avatar-preview" src="${attr(data.__avatar || 'assets/avatar.jpg')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;margin-top:5px;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/></div>
+      <div class="field"><label>首页背景图</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="f-greet-image" value="${attr(data.__greetImage || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-greet-upload">${icon("upload",14,2)}上传</button><input type="file" id="greet-file-input" accept="image/*" hidden/>
+          <img id="f-greet-image-preview" src="${attr(data.__greetImage || 'assets/greet-banner.jpg')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
+        </div>
+      </div>
+      <div class="field"><label>头像</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="f-avatar" value="${attr(data.__avatar || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-avatar-upload">${icon("upload",14,2)}上传</button><input type="file" id="avatar-file-input" accept="image/*" hidden/>
+          <img id="f-avatar-preview" src="${attr(data.__avatar || 'assets/avatar.jpg')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
+        </div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:10px;">
         <button class="btn ghost" id="btn-settings-cancel">取消</button>
         <button class="btn" id="btn-settings-save">保存</button>
@@ -1746,7 +1756,7 @@ function renderSettings() {
     go("home");
   };
 
-  // Real-time preview for greet image
+  // Real-time preview for greet image (URL input)
   const greetImageInput = $("#f-greet-image");
   const greetImagePreview = $("#f-greet-image-preview");
   greetImageInput.oninput = () => {
@@ -1755,13 +1765,66 @@ function renderSettings() {
     document.body.style.setProperty('--greet-image', `url('${url || "assets/greet-banner.jpg"}')`);
   };
 
-  // Real-time preview for avatar
+  // Real-time preview for avatar (URL input)
   const avatarInput = $("#f-avatar");
   const avatarPreview = $("#f-avatar-preview");
   avatarInput.oninput = () => {
     const url = avatarInput.value.trim();
     avatarPreview.src = url || 'assets/avatar.jpg';
     $("#avaImg").src = url || "assets/avatar.jpg";
+  };
+
+  // ---- 图片压缩工具：将本地图片文件压缩为 DataURL ----
+  function compressImage(file, maxW, maxH, quality, cb){
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width:w, height:h } = img;
+        if(w > maxW || h > maxH){
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ---- 背景图上传 ----
+  const greetFileInput = $("#greet-file-input");
+  $("#btn-greet-upload").onclick = () => greetFileInput.click();
+  greetFileInput.onchange = e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    compressImage(f, 1280, 720, 0.8, dataUrl => {
+      greetImageInput.value = dataUrl;
+      greetImagePreview.src = dataUrl;
+      document.body.style.setProperty('--greet-image', `url('${dataUrl}')`);
+      toast("背景图已加载，点击保存生效");
+    });
+    e.target.value = "";
+  };
+
+  // ---- 头像上传 ----
+  const avatarFileInput = $("#avatar-file-input");
+  $("#btn-avatar-upload").onclick = () => avatarFileInput.click();
+  avatarFileInput.onchange = e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    compressImage(f, 256, 256, 0.85, dataUrl => {
+      avatarInput.value = dataUrl;
+      avatarPreview.src = dataUrl;
+      $("#avaImg").src = dataUrl;
+      toast("头像已加载，点击保存生效");
+    });
+    e.target.value = "";
   };
 
   // ---- 数据导出 ----
