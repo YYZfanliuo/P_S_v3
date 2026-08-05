@@ -2110,8 +2110,6 @@ function render(){
     else if(view==="settings"){ $("#topTitle").firstChild.textContent="设置"; $("#topSub").textContent="个性化你的工作台"; }
     else if(view==="schedule"){ $("#topTitle").firstChild.textContent="日程管理"; $("#topSub").textContent="每日日程安排与可视化"; }
     else if(m){ $("#topTitle").firstChild.textContent=m.name; $("#topSub").textContent=m.desc||""; }
-    // 更新底部导航高亮
-    updateBottomNav();
   }
 }
 
@@ -2202,48 +2200,6 @@ function initMobileUI(){
   if(scrim) scrim.onclick = closeDrawer;
   if(drawerClose) drawerClose.innerHTML = icon("close",18);
   if(drawerClose) drawerClose.onclick = closeDrawer;
-
-  // FAB 浮动新建按钮
-  const fab=$("#fab");
-  if(fab) fab.innerHTML = icon("plus",24,2.4);
-  if(fab) fab.onclick = () => {
-    // FAB 默认新建当前模块的记录；在首页则跳转到第一个模块
-    if(view==="home"||view==="insight"||view==="settings"){
-      go(CONFIG.modules[0].key);
-      setTimeout(()=>openEditor(CONFIG.modules[0].key,null),100);
-    } else if(view==="schedule"){
-      openEditor("schedule",null);
-    } else {
-      openEditor(view,null);
-    }
-  };
-
-  // 底部导航栏
-  const nav=$("#nav");
-  if(nav){
-    const items=nav.querySelectorAll(".n");
-    items.forEach(n=>{
-      const navKey=n.dataset.nav;
-      if(navKey==="home") n.innerHTML=`${icon("home",20)}<span>首页</span>`;
-      else if(navKey==="drawer") n.innerHTML=`${icon("menu",20)}<span>菜单</span>`;
-      else if(navKey==="insight") n.innerHTML=`${icon("chart",20)}<span>洞察</span>`;
-      n.onclick=()=>{
-        if(navKey==="drawer"){ openDrawer(); }
-        else { go(navKey); }
-      };
-    });
-    updateBottomNav();
-  }
-}
-
-function updateBottomNav(){
-  if(!MOBILE) return;
-  const nav=$("#nav");
-  if(!nav) return;
-  nav.querySelectorAll(".n").forEach(n=>{
-    const navKey=n.dataset.nav;
-    n.classList.toggle("active", navKey===view);
-  });
 }
 
 function openDrawer(){

@@ -20,7 +20,7 @@ body.mobile .layout { min-height: 100vh; }
 
 /* ---- App 容器 ---- */
 body.mobile .app {
-  padding: 0 14px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));
+  padding: 0 14px calc(24px + env(safe-area-inset-bottom));
 }
 
 /* ============================================================
@@ -485,65 +485,8 @@ body.mobile .drawer .dfoot {
 }
 
 /* ============================================================
-   BOTTOM NAV — 底部导航栏
+   BOTTOM NAV & FAB — 已移除（导航统一通过抽屉）
    ============================================================ */
-body.mobile .nav {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 0;
-  width: 100%;
-  max-width: 480px;
-  height: var(--nav-h);
-  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
-  backdrop-filter: blur(14px);
-  border-top: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-items: center;
-  z-index: 30;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-body.mobile .nav .n {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 500;
-  transition: color .15s;
-}
-body.mobile .nav .n.active {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-/* ============================================================
-   FAB — 浮动新建按钮
-   ============================================================ */
-body.mobile .fab {
-  position: fixed;
-  right: 18px;
-  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: var(--shadow-overlay);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  z-index: 25;
-  transition: transform .15s, filter .15s;
-}
-body.mobile .fab:active {
-  transform: scale(.92);
-  filter: brightness(1.15);
-}
 
 /* ============================================================
    DARK MODE — 手机端深色模式适配
@@ -553,9 +496,6 @@ body.mobile[data-mode="dark"] .topbar {
     color-mix(in srgb, var(--page-bg) 95%, transparent),
     color-mix(in srgb, var(--page-bg) 70%, transparent));
 }
-body.mobile[data-mode="dark"] .nav {
-  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
-}
 
 /* ============================================================
    TOAST — 提示消息
@@ -563,7 +503,7 @@ body.mobile[data-mode="dark"] .nav {
 body.mobile .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));
+  bottom: calc(20px + env(safe-area-inset-bottom));
   transform: translateX(-50%) translateY(16px);
   background: var(--text);
   color: var(--surface-card);
