@@ -259,6 +259,7 @@ let data = store.load();
 /* ---- GitHub Gist 云端同步 ---- */
 let syncState = { status:"idle", lastSync:null, error:null };
 let syncPushTimer = null;
+let suppressAutoPush = false;  // 拉取后短暂抑制自动推送，避免回环
 
 function getSyncConfig(){ return data.__sync || {}; }
 function setSyncConfig(cfg){ data.__sync = { ...getSyncConfig(), ...cfg }; store.save(); }
@@ -330,16 +331,22 @@ async function syncPull(silent=false){
     const remoteData=JSON.parse(remote.content);
     const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
     const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
+    // 拉取后短暂抑制自动推送，避免 render() 间接触发 persist() 导致回环
+    suppressAutoPush=true;
+    setTimeout(()=>{ suppressAutoPush=false; }, 5000);
     if(remoteTS>localTS){
       data={...remoteData, __sync:cfg};
       store.save(); buildNav(); render();
+      cfg.lastSync=remote.updatedAt; setSyncConfig(cfg);
       syncState={status:"synced",lastSync:remote.updatedAt,error:null};
       if(!silent) toast("已拉取最新数据");
     }else{
+      cfg.lastSync=remote.updatedAt; setSyncConfig(cfg);
       syncState={status:"synced",lastSync:cfg.lastSync,error:null};
       if(!silent) toast("本地已是最新");
     }
   }catch(err){
+    suppressAutoPush=false;
     syncState={status:"error",lastSync:syncState.lastSync,error:err.message};
     if(!silent) toast("拉取失败: "+err.message);
   }
@@ -347,6 +354,7 @@ async function syncPull(silent=false){
 }
 
 function scheduleSyncPush(){
+  if(suppressAutoPush) return;
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId||!cfg.autoSync) return;
   clearTimeout(syncPushTimer);
@@ -2028,7 +2036,7 @@ function renderSettings() {
       try{
         syncState={status:"pulling",lastSync:null,error:null}; renderSyncStatus(); updateSyncIndicator();
         const remote=await gistPull(token, gistIdInput);
-        setSyncConfig({ token, gistId:gistIdInput, autoSync:$("#f-sync-auto").checked });
+        setSyncConfig({ token, gistId:gistIdInput, autoSync:$("#f-sync-auto").checked, lastSync:remote.updatedAt });
         const remoteData=JSON.parse(remote.content);
         const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
         const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
@@ -2283,3 +2291,11 @@ updateSyncIndicator();
     syncPull(true);
   }
 })();
+
+// 定时自动拉取（每 30 秒静默检查云端更新，仅开启自动同步时生效）
+setInterval(()=>{
+  const cfg=getSyncConfig();
+  if(cfg.token && cfg.gistId && cfg.autoSync){
+    syncPull(true);
+  }
+}, 30000);
