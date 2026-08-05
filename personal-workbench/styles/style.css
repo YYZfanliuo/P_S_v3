@@ -191,6 +191,9 @@ svg { display: block; }
 
 .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
   opacity: var(--card-opacity); transition: opacity .2s; }
+/* 所有卡片类元素统一透明度 */
+.modcard, .hero-banner, .quote, .qbtn, .panel, .side-card, .mini, .rec, .tile, .clock-card, .modal, .date-chip {
+  opacity: var(--card-opacity); transition: opacity .2s; }
 .sec-title { display:flex; align-items:center; gap:9px; font-size:14px; font-weight:800; margin: 18px 2px 10px; letter-spacing: -.01em; }
 .sec-title::before { content:""; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
 
