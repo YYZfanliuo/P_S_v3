@@ -6,6 +6,8 @@
   --page-bg: #f4f3f0;              /* 页面底色（body 背景） */
   --page-bg-image: none;            /* 页面底板背景图（DataURL 或 URL） */
   --page-bg-blur: 12px;             /* 底板背景图模糊度 */
+  --sidebar-opacity: 1;             /* 侧栏透明度（0-1） */
+  --card-opacity: 1;                /* 卡片/瓷砖透明度（0-1） */
   --surface-card: #fcfbf8;         /* 卡片/面板/输入框/按钮的主背景 */
   --surface-nested: #f7f6f1;       /* 嵌套区域：图标瓦底、ghost 按钮、hero 底 */
 
@@ -136,7 +138,8 @@ svg { display: block; }
 
 /* ---------- sidebar (固定在左侧，不随内容滚动) ---------- */
 .sidebar { background: linear-gradient(180deg, var(--drawer-bg-top), var(--drawer-bg)); color: var(--drawer-text);
-  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; z-index: 30; }
+  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; z-index: 30;
+  opacity: var(--sidebar-opacity); transition: opacity .2s; }
 .sidebar .brand { padding: 24px 20px 18px; display: flex; align-items: center; gap: 13px; }
 .sidebar .brand .ava { position: relative; width: 46px; height: 46px; border-radius: 13px; overflow: hidden; flex: 0 0 auto;
   background: var(--drawer-hover); box-shadow: 0 0 0 1px var(--drawer-active); cursor: pointer; }
@@ -186,7 +189,8 @@ svg { display: block; }
 .hero-banner .hstat + .hstat { padding-left: 26px; border-left: 1px solid var(--border-input); }
 .hero-banner .htop { position: absolute; top: 22px; right: 26px; z-index: 2; display: flex; gap: 10px; align-items: center; }
 
-.card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+.card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  opacity: var(--card-opacity); transition: opacity .2s; }
 .sec-title { display:flex; align-items:center; gap:9px; font-size:14px; font-weight:800; margin: 18px 2px 10px; letter-spacing: -.01em; }
 .sec-title::before { content:""; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
 

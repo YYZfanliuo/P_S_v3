@@ -224,6 +224,8 @@ const store = {
   d.__avatar = d.__avatar || "assets/avatar.jpg"; // Default avatar
   d.__pageBgImage = d.__pageBgImage || ""; // Default page background image (empty = solid color)
   d.__pageBgBlur = d.__pageBgBlur ?? 12; // Default page background blur in px
+  d.__sidebarOpacity = d.__sidebarOpacity ?? 1; // Default sidebar opacity (0-1)
+  d.__cardOpacity = d.__cardOpacity ?? 1; // Default card opacity (0-1)
   return d;
   },
   save(){ localStorage.setItem(CONFIG.storageKey, JSON.stringify(data)); },
@@ -1707,6 +1709,13 @@ function renderSettings() {
       <div class="field"><label>底板模糊度 <span id="f-blur-val" style="color:var(--accent);font-weight:700;">${data.__pageBgBlur ?? 12}px</span></label>
         <input type="range" id="f-pagebg-blur" min="0" max="40" step="1" value="${data.__pageBgBlur ?? 12}" style="width:100%;accent-color:var(--accent);"/>
       </div>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div class="field"><label>侧栏透明度 <span id="f-sidebar-op-val" style="color:var(--accent);font-weight:700;">${Math.round((data.__sidebarOpacity ?? 1) * 100)}%</span></label>
+        <input type="range" id="f-sidebar-opacity" min="0.2" max="1" step="0.05" value="${data.__sidebarOpacity ?? 1}" style="width:100%;accent-color:var(--accent);"/>
+      </div>
+      <div class="field"><label>卡片透明度 <span id="f-card-op-val" style="color:var(--accent);font-weight:700;">${Math.round((data.__cardOpacity ?? 1) * 100)}%</span></label>
+        <input type="range" id="f-card-opacity" min="0.2" max="1" step="0.05" value="${data.__cardOpacity ?? 1}" style="width:100%;accent-color:var(--accent);"/>
+      </div>
       <div style="display:flex;gap:10px;margin-top:10px;">
         <button class="btn ghost" id="btn-settings-cancel">取消</button>
         <button class="btn" id="btn-settings-save">保存</button>
@@ -1769,8 +1778,11 @@ function renderSettings() {
     data.__avatar = $("#f-avatar").value.trim();
     data.__pageBgImage = $("#f-pagebg").value.trim();
     data.__pageBgBlur = parseInt($("#f-pagebg-blur").value) || 0;
+    data.__sidebarOpacity = parseFloat($("#f-sidebar-opacity").value) || 1;
+    data.__cardOpacity = parseFloat($("#f-card-opacity").value) || 1;
     persist();
     applyPageBg();
+    applyOpacity();
     go("home");
   };
 
@@ -1894,6 +1906,24 @@ function renderSettings() {
     const v = parseInt(blurSlider.value) || 0;
     blurVal.textContent = `${v}px`;
     document.body.style.setProperty('--page-bg-blur', `${v}px`);
+  };
+
+  // 侧栏透明度滑块实时预览
+  const sidebarOpSlider = $("#f-sidebar-opacity");
+  const sidebarOpVal = $("#f-sidebar-op-val");
+  sidebarOpSlider.oninput = () => {
+    const v = parseFloat(sidebarOpSlider.value) || 1;
+    sidebarOpVal.textContent = `${Math.round(v * 100)}%`;
+    document.documentElement.style.setProperty('--sidebar-opacity', v);
+  };
+
+  // 卡片透明度滑块实时预览
+  const cardOpSlider = $("#f-card-opacity");
+  const cardOpVal = $("#f-card-op-val");
+  cardOpSlider.oninput = () => {
+    const v = parseFloat(cardOpSlider.value) || 1;
+    cardOpVal.textContent = `${Math.round(v * 100)}%`;
+    document.documentElement.style.setProperty('--card-opacity', v);
   };
 
   // ---- 数据导出 ----
@@ -2063,11 +2093,18 @@ function applyPageBg(){
   document.body.setAttribute('data-has-pagebg', img ? 'true' : 'false');
 }
 
+/* ---------- opacity (侧栏 + 卡片透明度) ---------- */
+function applyOpacity(){
+  document.documentElement.style.setProperty('--sidebar-opacity', data.__sidebarOpacity ?? 1);
+  document.documentElement.style.setProperty('--card-opacity', data.__cardOpacity ?? 1);
+}
+
 function buildNav(){
   $("#brandName").textContent=CONFIG.owner; $("#brandSlogan").textContent=CONFIG.slogan;
   $("#avaImg").src = data.__avatar || "assets/avatar.jpg"; // Update avatar image
   document.body.style.setProperty('--greet-image', `url('${data.__greetImage || "assets/greet-banner.jpg"}')`); // Update background
   applyPageBg(); // Apply page background image + blur
+  applyOpacity(); // Apply sidebar + card opacity
 
   const groupedModules = {};
   CONFIG.modules.forEach(m => {
