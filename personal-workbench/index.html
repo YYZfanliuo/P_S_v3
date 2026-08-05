@@ -5,7 +5,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>我的工作台 · 桌面版</title>
-<link rel="stylesheet" href="styles/style.css?v=4">
+<link rel="stylesheet" href="styles/style.css?v=5">
 <script>
 // 在页面渲染前应用保存的主题，避免 FOUC
 (function(){
@@ -24,7 +24,7 @@
   <!-- sidebar -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="ava" id="ava" title="点击更换头像"><img src="assets/avatar.jpg" alt="头像" id="avaImg"/><span class="cam" id="avaCam"></span></div>
+      <div class="ava" id="ava" title="点击更换头像（自动压缩 ≤256×256 JPEG 85%）"><img src="assets/avatar.jpg" alt="头像" id="avaImg"/><span class="cam" id="avaCam"></span></div>
       <input type="file" id="avatarInput" accept="image/*" hidden/>
       <div><h1 id="brandName">我的工作台</h1><p id="brandSlogan">Personal Workbench</p></div>
     </div>
@@ -35,6 +35,6 @@
   <main class="main"><div id="screen"></div></main>
 </div>
 
-<script src="scripts/app.js?v=4"></script>
+<script src="scripts/app.js?v=5"></script>
 </body>
 </html>

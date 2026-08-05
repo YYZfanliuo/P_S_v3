@@ -215,6 +215,29 @@ const modOf = k => CONFIG.modules.find(m=>m.key===k);
 const $ = s => document.querySelector(s);
 const MOBILE = document.body.classList.contains('mobile');
 
+/* ---- 图片压缩工具：将本地图片文件压缩为 DataURL ---- */
+function compressImage(file, maxW, maxH, quality, cb){
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let { width:w, height:h } = img;
+      if(w > maxW || h > maxH){
+        const ratio = Math.min(maxW / w, maxH / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 const store = {
   load(){
     const raw = localStorage.getItem(CONFIG.storageKey);
@@ -1557,7 +1580,7 @@ function openEditor(key,item){
     else fields+=`<div class="field"><label>${esc(f.label)}</label><input id="f-cf-${f.key}" value="${attr(v)}" placeholder="${attr(f.placeholder||'')}"/></div>`;
   });
   // shared image URL field (all types)
-  fields+=`<div class="field"><label>图片 URL（可选）</label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
+  fields+=`<div class="field"><label>图片 URL（可选） <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">仅支持外链 · 不压缩 · 建议宽高比 1:1 · 双端记录卡片</span></label><input id="f-image" value="${attr(d.image||'')}" placeholder="https://..."/></div>`;
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal"><h3>${editing?'编辑':'新建'} · ${m.name}</h3><div class="sub">${m.desc}</div>${fields}
     <div class="modal-actions">${editing?'<button class="link-danger" id="m-del">删除</button>':''}<div class="spacer"></div>
@@ -1685,20 +1708,20 @@ function renderSettings() {
     <div class="card" style="padding:20px;display:flex;flex-direction:column;gap:15px;">
       <div class="field"><label>你的名字</label><input id="f-owner" value="${attr(CONFIG.owner)}"/></div>
       <div class="field"><label>个性签名/标语</label><input id="f-slogan" value="${attr(CONFIG.slogan)}"/></div>
-      <div class="field"><label>首页背景图</label>
+      <div class="field"><label>首页背景图 <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">上传规格：≤1280×720 · JPEG 80% · 双端首页问候区背景</span></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input id="f-greet-image" value="${attr(data.__greetImage || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-greet-upload">${icon("upload",14,2)}上传</button><input type="file" id="greet-file-input" accept="image/*" hidden/>
           <img id="f-greet-image-preview" src="${attr(data.__greetImage || 'assets/greet-banner.jpg')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
         </div>
       </div>
-      <div class="field"><label>头像</label>
+      <div class="field"><label>头像 <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">上传规格：≤256×256 · JPEG 85% · 桌面侧栏/手机抽屉</span></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input id="f-avatar" value="${attr(data.__avatar || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-avatar-upload">${icon("upload",14,2)}上传</button><input type="file" id="avatar-file-input" accept="image/*" hidden/>
           <img id="f-avatar-preview" src="${attr(data.__avatar || 'assets/avatar.jpg')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
         </div>
       </div>
       <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-      <div class="field"><label>底板背景图</label>
+      <div class="field"><label>底板背景图 <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">上传规格：≤1920×1080 · JPEG 80% · 双端整页背景</span></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input id="f-pagebg" value="${attr(data.__pageBgImage || '')}" placeholder="URL 或点击上传，留空则纯色" style="flex:1;min-width:120px;"/>
           <button class="btn ghost sm" id="btn-pagebg-upload">${icon("upload",14,2)}上传</button>
@@ -1805,28 +1828,7 @@ function renderSettings() {
     $("#avaImg").src = url || "assets/avatar.jpg";
   };
 
-  // ---- 图片压缩工具：将本地图片文件压缩为 DataURL ----
-  function compressImage(file, maxW, maxH, quality, cb){
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width:w, height:h } = img;
-        if(w > maxW || h > maxH){
-          const ratio = Math.min(maxW / w, maxH / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        cb(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  }
+  // ---- 图片压缩工具已提取为全局函数 compressImage() ----
 
   // ---- 背景图上传 ----
   const greetFileInput = $("#greet-file-input");
@@ -1838,7 +1840,7 @@ function renderSettings() {
       greetImageInput.value = dataUrl;
       greetImagePreview.src = dataUrl;
       document.body.style.setProperty('--greet-image', `url('${dataUrl}')`);
-      toast("背景图已加载，点击保存生效");
+      toast("背景图已加载（压缩至 ≤1280×720 JPEG 80%），点击保存生效");
     });
     e.target.value = "";
   };
@@ -1853,7 +1855,7 @@ function renderSettings() {
       avatarInput.value = dataUrl;
       avatarPreview.src = dataUrl;
       $("#avaImg").src = dataUrl;
-      toast("头像已加载，点击保存生效");
+      toast("头像已加载（压缩至 ≤256×256 JPEG 85%），点击保存生效");
     });
     e.target.value = "";
   };
@@ -1888,7 +1890,7 @@ function renderSettings() {
       document.body.style.setProperty('--page-bg-image', `url('${dataUrl}')`);
       document.body.setAttribute('data-has-pagebg', 'true');
       $("#btn-pagebg-clear").disabled = false;
-      toast("底板背景图已加载，点击保存生效");
+      toast("底板背景图已加载（压缩至 ≤1920×1080 JPEG 80%），点击保存生效");
     });
     e.target.value = "";
   };
@@ -2236,7 +2238,7 @@ function closeDrawer(){
   if(scrim) scrim.classList.remove("show");
 }
 
-/* ---------- avatar upload ---------- */
+/* ---------- avatar upload (侧栏/抽屉快捷上传，自动压缩) ---------- */
 $("#avaCam").innerHTML = icon("camera",18);
 if(data.__avatar) $("#avaImg").src = data.__avatar;
 // 桌面端：点击侧栏头像；手机端：点击抽屉头像
@@ -2245,9 +2247,13 @@ if(avaContainer) avaContainer.onclick = () => $("#avatarInput").click();
 $("#avatarInput").onchange = e => {
   const f = e.target.files && e.target.files[0];
   if(!f) return;
-  const reader = new FileReader();
-  reader.onload = () => { data.__avatar = reader.result; $("#avaImg").src = reader.result; store.save(); };
-  reader.readAsDataURL(f);
+  // 自动压缩：256×256, JPEG 85%
+  compressImage(f, 256, 256, 0.85, dataUrl => {
+    data.__avatar = dataUrl;
+    $("#avaImg").src = dataUrl;
+    store.save();
+    toast("头像已更新（已压缩至 ≤256×256 JPEG 85%）");
+  });
   e.target.value = "";
 };
 
