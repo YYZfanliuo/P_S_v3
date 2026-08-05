@@ -213,6 +213,7 @@ function avgProgress(list){
 }
 const modOf = k => CONFIG.modules.find(m=>m.key===k);
 const $ = s => document.querySelector(s);
+const MOBILE = document.body.classList.contains('mobile');
 
 const store = {
   load(){
@@ -2072,14 +2073,25 @@ function renderSettings() {
 
 /* ---------- router / sidebar ---------- */
 function dateStr(){ const n=new Date(); const wd="日一二三四五六"[n.getDay()]; return `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 周${wd}`; }
-function go(v){ view=v; searchQ=""; renderNavActive(); render(); window.scrollTo({top:0}); }
-function render(){ 
-  if(view==="home") renderHome(); 
-  else if(view==="insight") renderInsight(); 
-  else if(view==="settings") renderSettings(); 
+function go(v){ view=v; searchQ=""; renderNavActive(); render(); closeDrawer(); window.scrollTo({top:0}); }
+function render(){
+  if(view==="home") renderHome();
+  else if(view==="insight") renderInsight();
+  else if(view==="settings") renderSettings();
   else if(view==="schedule") {
     renderSchedule();
-  } else renderModule(view); 
+  } else renderModule(view);
+  // 手机端：更新顶栏标题
+  if(MOBILE){
+    const m = modOf(view);
+    if(view==="home"){ $("#topTitle").firstChild.textContent="我的工作台"; $("#topSub").textContent=CONFIG.slogan; }
+    else if(view==="insight"){ $("#topTitle").firstChild.textContent="洞察复盘"; $("#topSub").textContent="各模块进展一览"; }
+    else if(view==="settings"){ $("#topTitle").firstChild.textContent="设置"; $("#topSub").textContent="个性化你的工作台"; }
+    else if(view==="schedule"){ $("#topTitle").firstChild.textContent="日程管理"; $("#topSub").textContent="每日日程安排与可视化"; }
+    else if(m){ $("#topTitle").firstChild.textContent=m.name; $("#topSub").textContent=m.desc||""; }
+    // 更新底部导航高亮
+    updateBottomNav();
+  }
 }
 
 /* ---------- page background (底板背景图 + 模糊度) ---------- */
@@ -2132,10 +2144,12 @@ function buildNav(){
   html.push(`<div class="navi theme-toggle" id="themeToggle">${icon(theme === "dark" ? "sun" : "moon", 19)}${theme === "dark" ? "浅色模式" : "深色模式"}</div>`);
   html.push(`<div class="navi" data-go="settings">${icon("gear",19)}设置</div>`);
 
-  $("#nav").innerHTML=html.join("");
-  $("#nav").querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>go(el.dataset.go));
+  // 桌面端：填充侧栏 #nav；手机端：填充抽屉 #drawerList
+  const navContainer = MOBILE ? $("#drawerList") : $("#nav");
+  navContainer.innerHTML=html.join("");
+  navContainer.querySelectorAll("[data-go]").forEach(el=>el.onclick=()=>go(el.dataset.go));
   // Theme toggle click handler
-  const themeBtn = $("#themeToggle");
+  const themeBtn = navContainer.querySelector("#themeToggle");
   if(themeBtn) themeBtn.onclick = () => {
     const newTheme = (data.__theme || "light") === "dark" ? "light" : "dark";
     data.__theme = newTheme;
@@ -2145,13 +2159,89 @@ function buildNav(){
     updateSyncIndicator();
   };
   renderNavActive();
+
+  // 手机端：初始化日期标签、抽屉、FAB、底部导航
+  if(MOBILE) initMobileUI();
 }
-function renderNavActive(){ $("#nav").querySelectorAll(".navi").forEach(el=>el.classList.toggle("active", el.dataset.go===view)); }
+function renderNavActive(){
+  const navContainer = MOBILE ? $("#drawerList") : $("#nav");
+  navContainer.querySelectorAll(".navi").forEach(el=>el.classList.toggle("active", el.dataset.go===view));
+}
+
+/* ---------- 手机端 UI 初始化 ---------- */
+function initMobileUI(){
+  // 日期标签
+  const dc=$("#dateChip");
+  if(dc) dc.innerHTML = `${icon("calendar",13)} ${dateStr()}`;
+
+  // 菜单按钮 / 遮罩 / 关闭抽屉
+  const btnMenu=$("#btn-menu"); const scrim=$("#scrim"); const drawerClose=$("#drawerClose");
+  if(btnMenu) btnMenu.innerHTML = icon("menu",20);
+  if(btnMenu) btnMenu.onclick = openDrawer;
+  if(scrim) scrim.onclick = closeDrawer;
+  if(drawerClose) drawerClose.innerHTML = icon("close",18);
+  if(drawerClose) drawerClose.onclick = closeDrawer;
+
+  // FAB 浮动新建按钮
+  const fab=$("#fab");
+  if(fab) fab.innerHTML = icon("plus",24,2.4);
+  if(fab) fab.onclick = () => {
+    // FAB 默认新建当前模块的记录；在首页则跳转到第一个模块
+    if(view==="home"||view==="insight"||view==="settings"){
+      go(CONFIG.modules[0].key);
+      setTimeout(()=>openEditor(CONFIG.modules[0].key,null),100);
+    } else if(view==="schedule"){
+      openEditor("schedule",null);
+    } else {
+      openEditor(view,null);
+    }
+  };
+
+  // 底部导航栏
+  const nav=$("#nav");
+  if(nav){
+    const items=nav.querySelectorAll(".n");
+    items.forEach(n=>{
+      const navKey=n.dataset.nav;
+      if(navKey==="home") n.innerHTML=`${icon("home",20)}<span>首页</span>`;
+      else if(navKey==="drawer") n.innerHTML=`${icon("menu",20)}<span>菜单</span>`;
+      else if(navKey==="insight") n.innerHTML=`${icon("chart",20)}<span>洞察</span>`;
+      n.onclick=()=>{
+        if(navKey==="drawer"){ openDrawer(); }
+        else { go(navKey); }
+      };
+    });
+    updateBottomNav();
+  }
+}
+
+function updateBottomNav(){
+  if(!MOBILE) return;
+  const nav=$("#nav");
+  if(!nav) return;
+  nav.querySelectorAll(".n").forEach(n=>{
+    const navKey=n.dataset.nav;
+    n.classList.toggle("active", navKey===view);
+  });
+}
+
+function openDrawer(){
+  const drawer=$("#drawer"); const scrim=$("#scrim");
+  if(drawer) drawer.classList.add("show");
+  if(scrim) scrim.classList.add("show");
+}
+function closeDrawer(){
+  const drawer=$("#drawer"); const scrim=$("#scrim");
+  if(drawer) drawer.classList.remove("show");
+  if(scrim) scrim.classList.remove("show");
+}
 
 /* ---------- avatar upload ---------- */
 $("#avaCam").innerHTML = icon("camera",18);
 if(data.__avatar) $("#avaImg").src = data.__avatar;
-$("#ava").onclick = () => $("#avatarInput").click();
+// 桌面端：点击侧栏头像；手机端：点击抽屉头像
+const avaContainer = MOBILE ? $("#drawerBrand") : $("#ava");
+if(avaContainer) avaContainer.onclick = () => $("#avatarInput").click();
 $("#avatarInput").onchange = e => {
   const f = e.target.files && e.target.files[0];
   if(!f) return;
