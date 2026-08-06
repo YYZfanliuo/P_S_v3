@@ -2131,14 +2131,14 @@ function renderSettings() {
 /* ---------- router / sidebar ---------- */
 let lastPullByView = 0;   // 视图切换拉取节流时间戳
 function ifPullOnView(v){
-  // 设置页不拉取（避免打断填写），其余视图切换时静默拉取
+  // 设置页不拉取（避免打断填写），其余视图切换时拉取并给出可见反馈
   if(v === "settings") return;
   const cfg = getSyncConfig();
   if(!cfg.token || !cfg.gistId) return;
   const now = Date.now();
   if(now - lastPullByView < 2000) return;   // 2 秒节流，快速切换不重复拉取
   lastPullByView = now;
-  syncPull(true);
+  syncPull(false);
 }
 function dateStr(){ const n=new Date(); const wd="日一二三四五六"[n.getDay()]; return `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 周${wd}`; }
 function go(v){ view=v; searchQ=""; renderNavActive(); render(); closeDrawer(); window.scrollTo({top:0}); ifPullOnView(v); }
