@@ -416,6 +416,8 @@ body.mobile .drawer .dh .brand .brand-cam {
   transition: opacity .15s;
 }
 body.mobile .drawer .dh .brand:active .brand-cam { opacity: 1; }
+/* 无头像时相机图标常显，提示可点击上传 */
+body.mobile .drawer .dh .brand.no-img .brand-cam { opacity: 1; background: transparent; }
 body.mobile .drawer .dh h2 {
   font-size: 17px;
   font-weight: 800;

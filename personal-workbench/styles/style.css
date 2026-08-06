@@ -147,6 +147,8 @@ svg { display: block; }
 .sidebar .brand .ava .cam { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0;
   background: rgba(35,34,32,.5); color: var(--drawer-text); transition: opacity .15s; }
 .sidebar .brand .ava:hover .cam { opacity: 1; }
+/* 无头像时相机图标常显，提示可点击上传 */
+.sidebar .brand .ava.no-img .cam { opacity: 1; background: transparent; }
 .sidebar .brand h1 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .sidebar .brand p { font-size: 11px; opacity: .5; margin-top: 3px; letter-spacing: .05em; }
 .sidebar .nav { flex: 1; overflow-y: auto; padding: 6px 12px 12px; }

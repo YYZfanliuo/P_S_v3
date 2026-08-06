@@ -244,8 +244,8 @@ const store = {
     if(raw){ try { return JSON.parse(raw); } catch(e){} }
     const d={}; CONFIG.modules.forEach(m=>d[m.key]=structuredClone(m.seed||[]));
     d.__termStartDate = d.__termStartDate || "2026-08-31"; // Default term start date
-    d.__greetImage = d.__greetImage || "assets/greet-banner.jpg"; // Default greet image
-  d.__avatar = d.__avatar || "assets/avatar.jpg"; // Default avatar
+    d.__greetImage = d.__greetImage || ""; // Greet background image (empty = no background)
+  d.__avatar = d.__avatar || ""; // Avatar (empty = no avatar)
   d.__pageBgImage = d.__pageBgImage || ""; // Default page background image (empty = solid color)
   d.__pageBgBlur = d.__pageBgBlur ?? 12; // Default page background blur in px
   d.__sidebarOpacity = d.__sidebarOpacity ?? 1; // Default sidebar opacity (0-1)
@@ -296,11 +296,12 @@ async function gistPull(token, gistId){
   return { content:f.content, updatedAt:j.updated_at };
 }
 
-/* ---- 构建同步载荷：剔除 token 明文，防止推送到 Gist 后被 GitHub secret scanning 吊销 ---- */
+/* ---- 构建同步载荷：剔除 token 明文与底板背景（双端比例不一，各自保留） ---- */
 function buildSyncPayload(){
   const sync = data.__sync || {};
   const { token: _stripped, ...safeSync } = sync;
-  return JSON.stringify({ ...data, __sync: safeSync });
+  const { __pageBgImage: _bg1, __pageBgBlur: _bg2, ...safeData } = data;
+  return JSON.stringify({ ...safeData, __sync: safeSync });
 }
 
 async function syncPush(silent=false){
@@ -335,7 +336,8 @@ async function syncPull(silent=false){
     suppressAutoPush=true;
     setTimeout(()=>{ suppressAutoPush=false; }, 5000);
     if(remoteTS>localTS){
-      data={...remoteData, __sync:cfg};
+      // 保留本地底板背景（双端不互相同步）与同步配置
+      data={...remoteData, __sync:cfg, __pageBgImage:data.__pageBgImage||"", __pageBgBlur:data.__pageBgBlur??12};
       store.save(); buildNav(); render();
       cfg.lastSync=remote.updatedAt; setSyncConfig(cfg);
       syncState={status:"synced",lastSync:remote.updatedAt,error:null};
@@ -358,7 +360,7 @@ function scheduleSyncPush(){
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId||!cfg.autoSync) return;
   clearTimeout(syncPushTimer);
-  syncPushTimer=setTimeout(()=>syncPush(true), 3000);
+  syncPushTimer=setTimeout(()=>syncPush(true), 1500);
 }
 
 function updateSyncIndicator(){
@@ -1725,14 +1727,14 @@ function renderSettings() {
       <div class="field"><label>个性签名/标语</label><input id="f-slogan" value="${attr(CONFIG.slogan)}"/></div>
       <div class="field"><label>首页背景图 <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">上传规格：≤1280×720 · JPEG 80% · 双端首页问候区背景</span></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input id="f-greet-image" value="${attr(data.__greetImage || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-greet-upload">${icon("upload",14,2)}上传</button><input type="file" id="greet-file-input" accept="image/*" hidden/>
-          <img id="f-greet-image-preview" src="${attr(data.__greetImage || 'assets/greet-banner.jpg')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
+          <input id="f-greet-image" value="${attr(data.__greetImage || '')}" placeholder="URL 或点击上传，清除则无背景" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-greet-upload">${icon("upload",14,2)}上传</button><button class="btn ghost sm" id="btn-greet-clear" ${!data.__greetImage?'disabled':''}>清除</button><input type="file" id="greet-file-input" accept="image/*" hidden/>
+          <img id="f-greet-image-preview" src="${attr(data.__greetImage || '')}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;${data.__greetImage?'':'display:none;'}" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
         </div>
       </div>
       <div class="field"><label>头像 <span style="font-size:11px;color:var(--text-tertiary);font-weight:500;">上传规格：≤256×256 · JPEG 85% · 桌面侧栏/手机抽屉</span></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input id="f-avatar" value="${attr(data.__avatar || '')}" placeholder="URL 或点击上传" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-avatar-upload">${icon("upload",14,2)}上传</button><input type="file" id="avatar-file-input" accept="image/*" hidden/>
-          <img id="f-avatar-preview" src="${attr(data.__avatar || 'assets/avatar.jpg')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
+          <input id="f-avatar" value="${attr(data.__avatar || '')}" placeholder="URL 或点击上传，清除则不显示头像" style="flex:1;min-width:120px;"/><button class="btn ghost sm" id="btn-avatar-upload">${icon("upload",14,2)}上传</button><button class="btn ghost sm" id="btn-avatar-clear" ${!data.__avatar?'disabled':''}>清除</button><input type="file" id="avatar-file-input" accept="image/*" hidden/>
+          <img id="f-avatar-preview" src="${attr(data.__avatar || '')}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;${data.__avatar?'':'display:none;'}" onerror="this.style.display='none'" onload="this.style.display='inline-block'"/>
         </div>
       </div>
       <div style="height:1px;background:var(--border);margin:4px 0;"></div>
@@ -1796,7 +1798,7 @@ function renderSettings() {
       <div class="field"><label>Gist ID</label><input id="f-sync-gistid" value="${attr(getSyncConfig().gistId||'')}" placeholder="留空则自动创建新 Gist"/></div>
       <div class="field" style="flex-direction:row;align-items:center;gap:8px;">
         <input type="checkbox" id="f-sync-auto" ${getSyncConfig().autoSync?'checked':''} style="width:auto;"/>
-        <label for="f-sync-auto" style="margin:0;cursor:pointer;">自动同步（数据变更后 3 秒自动推送）</label>
+        <label for="f-sync-auto" style="margin:0;cursor:pointer;">自动同步（数据变更后 1.5 秒自动推送）</label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:5px;">
         <button class="btn" id="btn-sync-connect">${icon("sync",15,1.8)}连接</button>
@@ -1820,6 +1822,7 @@ function renderSettings() {
     data.__sidebarOpacity = parseFloat($("#f-sidebar-opacity").value) || 1;
     data.__cardOpacity = parseFloat($("#f-card-opacity").value) || 1;
     persist();
+    buildNav();          // 刷新侧栏/抽屉中的用户名与头像
     applyPageBg();
     applyOpacity();
     go("home");
@@ -1828,19 +1831,52 @@ function renderSettings() {
   // Real-time preview for greet image (URL input)
   const greetImageInput = $("#f-greet-image");
   const greetImagePreview = $("#f-greet-image-preview");
+  const greetClearBtn = $("#btn-greet-clear");
   greetImageInput.oninput = () => {
     const url = greetImageInput.value.trim();
-    greetImagePreview.src = url || 'assets/greet-banner.jpg';
-    document.body.style.setProperty('--greet-image', `url('${url || "assets/greet-banner.jpg"}')`);
+    greetImagePreview.style.display = url ? 'inline-block' : 'none';
+    greetImagePreview.src = url || '';
+    if(url){
+      document.body.style.setProperty('--greet-image', `url('${url}')`);
+    } else {
+      document.body.style.setProperty('--greet-image', 'none');
+    }
+    if(greetClearBtn) greetClearBtn.disabled = !url;
+  };
+  if(greetClearBtn) greetClearBtn.onclick = () => {
+    greetImageInput.value = "";
+    greetImagePreview.style.display = 'none';
+    greetImagePreview.src = '';
+    document.body.style.setProperty('--greet-image', 'none');
+    greetClearBtn.disabled = true;
+    toast("首页背景图已清除");
   };
 
   // Real-time preview for avatar (URL input)
   const avatarInput = $("#f-avatar");
   const avatarPreview = $("#f-avatar-preview");
+  const avatarClearBtn = $("#btn-avatar-clear");
   avatarInput.oninput = () => {
     const url = avatarInput.value.trim();
-    avatarPreview.src = url || 'assets/avatar.jpg';
-    $("#avaImg").src = url || "assets/avatar.jpg";
+    avatarPreview.style.display = url ? 'inline-block' : 'none';
+    avatarPreview.src = url || '';
+    if(url){
+      $("#avaImg").src = url; $("#avaImg").style.display = 'block';
+      [$("#ava"), $("#drawerBrand")].forEach(b=>b&&b.classList.remove("no-img"));
+    } else {
+      $("#avaImg").style.display = 'none';
+      [$("#ava"), $("#drawerBrand")].forEach(b=>b&&b.classList.add("no-img"));
+    }
+    if(avatarClearBtn) avatarClearBtn.disabled = !url;
+  };
+  if(avatarClearBtn) avatarClearBtn.onclick = () => {
+    avatarInput.value = "";
+    avatarPreview.style.display = 'none';
+    avatarPreview.src = '';
+    $("#avaImg").style.display = 'none';
+    [$("#ava"), $("#drawerBrand")].forEach(b=>b&&b.classList.add("no-img"));
+    avatarClearBtn.disabled = true;
+    toast("头像已清除");
   };
 
   // ---- 图片压缩工具已提取为全局函数 compressImage() ----
@@ -2041,7 +2077,7 @@ function renderSettings() {
         const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
         const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
         if(remoteTS>localTS){
-          data={...remoteData, __sync:getSyncConfig()};
+          data={...remoteData, __sync:getSyncConfig(), __pageBgImage:data.__pageBgImage||"", __pageBgBlur:data.__pageBgBlur??12};
           store.save(); buildNav(); render();
           toast("已连接并拉取最新数据");
         }else{
@@ -2132,8 +2168,12 @@ function applyOpacity(){
 
 function buildNav(){
   $("#brandName").textContent=CONFIG.owner; $("#brandSlogan").textContent=CONFIG.slogan;
-  $("#avaImg").src = data.__avatar || "assets/avatar.jpg"; // Update avatar image
-  document.body.style.setProperty('--greet-image', `url('${data.__greetImage || "assets/greet-banner.jpg"}')`); // Update background
+  // 头像：空值则不显示（空白占位 + 相机图标常显）
+  const avaBoxes=[$("#ava"), $("#drawerBrand")];
+  if(data.__avatar){ $("#avaImg").src = data.__avatar; $("#avaImg").style.display = "block"; avaBoxes.forEach(b=>b&&b.classList.remove("no-img")); }
+  else { $("#avaImg").removeAttribute("src"); $("#avaImg").style.display = "none"; avaBoxes.forEach(b=>b&&b.classList.add("no-img")); }
+  // 首页背景：空值则无背景（纯色）
+  document.body.style.setProperty('--greet-image', data.__greetImage ? `url('${data.__greetImage}')` : 'none');
   applyPageBg(); // Apply page background image + blur
   applyOpacity(); // Apply sidebar + card opacity
 
@@ -2215,7 +2255,8 @@ function closeDrawer(){
 
 /* ---------- avatar upload (侧栏/抽屉快捷上传，自动压缩) ---------- */
 $("#avaCam").innerHTML = icon("camera",18);
-if(data.__avatar) $("#avaImg").src = data.__avatar;
+if(data.__avatar){ $("#avaImg").src = data.__avatar; $("#avaImg").style.display = "block"; }
+else { $("#avaImg").removeAttribute("src"); $("#avaImg").style.display = "none"; }
 // 桌面端：点击侧栏头像；手机端：点击抽屉头像
 const avaContainer = MOBILE ? $("#drawerBrand") : $("#ava");
 if(avaContainer) avaContainer.onclick = () => $("#avatarInput").click();
@@ -2225,7 +2266,8 @@ $("#avatarInput").onchange = e => {
   // 自动压缩：256×256, JPEG 85%
   compressImage(f, 256, 256, 0.85, dataUrl => {
     data.__avatar = dataUrl;
-    $("#avaImg").src = dataUrl;
+    $("#avaImg").src = dataUrl; $("#avaImg").style.display = "block";
+    [$("#ava"), $("#drawerBrand")].forEach(b=>b&&b.classList.remove("no-img"));
     store.save();
     toast("头像已更新（已压缩至 ≤256×256 JPEG 85%）");
   });
@@ -2248,10 +2290,10 @@ updateSyncIndicator();
   }
 })();
 
-// 定时自动拉取（每 30 秒静默检查云端更新，仅开启自动同步时生效）
+// 定时自动拉取（每 15 秒静默检查云端更新，仅开启自动同步时生效）
 setInterval(()=>{
   const cfg=getSyncConfig();
   if(cfg.token && cfg.gistId && cfg.autoSync){
     syncPull(true);
   }
-}, 30000);
+}, 15000);
