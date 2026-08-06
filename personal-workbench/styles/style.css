@@ -46,7 +46,7 @@
   --drawer-active: rgba(244,243,240,.12);      /* 侧栏选中底 */
 
   /* ---- 背景图 ---- */
-  --greet-image: url("assets/greet-banner.jpg");  /* 首页 hero 背景图 */
+  --greet-image: url("../assets/greet-banner.jpg");  /* 首页 hero 背景图（相对本样式表） */
   --page-texture: none;                            /* 页面纹理叠加（none 或 url(...)） */
 
   /* ---- 圆角（按组件角色，不要裸写数字） ---- */

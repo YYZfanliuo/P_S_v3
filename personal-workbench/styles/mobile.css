@@ -10,13 +10,17 @@ body.mobile {
   margin: 0 auto;
   font-size: 15px;
   overflow-x: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;               /* 动态视口高度：地址栏收起/展开时不跳动 */
+  overscroll-behavior-y: none;      /* 禁止上拉/下拉触发浏览器工具栏与刷新 */
+  overscroll-behavior-x: none;
 }
 
 /* ---- 隐藏桌面端侧栏 ---- */
 body.mobile .sidebar { display: none !important; }
 body.mobile .main { margin-left: 0; padding: 0; }
 body.mobile #screen { max-width: 100%; }
-body.mobile .layout { min-height: 100vh; }
+body.mobile .layout { min-height: 100vh; min-height: 100dvh; }
 
 /* ---- App 容器 ---- */
 body.mobile .app {
