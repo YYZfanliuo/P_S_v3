@@ -162,6 +162,8 @@ svg { display: block; }
 .navi.active svg { color: var(--drawer-text); }
 .nav-sep { font-size: 10.5px; opacity: .42; padding: 15px 14px 6px; letter-spacing: .1em; }
 .sidebar .foot { padding: 15px 20px; font-size: 11px; opacity: .42; border-top: 1px solid var(--drawer-hover); }
+/* 版本标签 */
+.ver-tag { padding: 6px 20px 14px; font-size: 10px; opacity: .35; letter-spacing: .03em; }
 
 /* ---------- main ---------- */
 .main { margin-left: var(--sidebar-w); padding: 26px 34px 48px; }

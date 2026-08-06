@@ -238,6 +238,11 @@ function compressImage(file, maxW, maxH, quality, cb){
   reader.readAsDataURL(file);
 }
 
+/* ============================================================
+   VERSION — 版本号（每次更新代码时递增，显示在设置页与侧栏底部）
+   ============================================================ */
+const APP_VERSION = "v1.5.0";
+
 const store = {
   load(){
     const raw = localStorage.getItem(CONFIG.storageKey);
@@ -1814,6 +1819,11 @@ function renderSettings() {
       <div style="font-size:11px;color:var(--text-secondary);line-height:1.6;">
         ${icon("sync",11,1.7)} 通过 GitHub Gist 实现跨设备数据同步。前往 <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent);">GitHub Settings → Tokens</a> 创建 Classic Token（勾选 gist 权限，过期时间可选 No expiration 永久有效），粘贴到上方。Gist 为私有，仅你自己可访问。
       </div>
+    </div>
+
+    <div style="text-align:center;padding:18px 0 6px;font-size:12px;color:var(--text-tertiary);">
+      ${icon("grid",12,1.7)} <span style="font-weight:700;">个人工作台 ${APP_VERSION}</span> · 本地数据存储 · 更新日志见 GitHub
+    </div>
     </div>`;
 
   $("#btn-settings-cancel").onclick = () => go("home");
@@ -2296,6 +2306,10 @@ $("#avatarInput").onchange = e => {
 /* ---------- utils ---------- */
 function esc(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function attr(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+// 填充版本标签（侧栏/抽屉底部）
+const verTag=$("#verTag");
+if(verTag) verTag.textContent = APP_VERSION;
 
 buildNav();
 render();
