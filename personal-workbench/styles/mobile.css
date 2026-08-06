@@ -20,6 +20,8 @@ body.mobile .layout { min-height: 100vh; }
 
 /* ---- App 容器 ---- */
 body.mobile .app {
+  position: relative;          /* 提升层级，浮在底板背景层(body::after)之上 */
+  z-index: 1;
   padding: 0 14px calc(24px + env(safe-area-inset-bottom));
 }
 
