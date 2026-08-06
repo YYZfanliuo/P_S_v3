@@ -241,7 +241,7 @@ function compressImage(file, maxW, maxH, quality, cb){
 /* ============================================================
    VERSION — 版本号（每次更新代码时递增，显示在设置页与侧栏底部）
    ============================================================ */
-const APP_VERSION = "v1.5.2";
+const APP_VERSION = "v1.6.0";
 
 const store = {
   load(){
@@ -266,6 +266,8 @@ let syncState = { status:"idle", lastSync:null, error:null };
 let syncPushTimer = null;
 let suppressAutoPush = false;  // 拉取后短暂抑制自动推送，避免回环
 let pendingPush = false;       // 抑制窗口内有变更时标记，结束后补推
+let syncSignalEtag = null;     // 云端变更信号（Gist ETag），null=未知需全量探测
+let syncSignalProbing = false; // 信号探测防重入
 
 function getSyncConfig(){ return data.__sync || {}; }
 function setSyncConfig(cfg){ data.__sync = { ...getSyncConfig(), ...cfg }; store.save(); }
@@ -290,16 +292,17 @@ async function gistPush(token, gistId, payload){
   const j=await res.json(); return j.updated_at;
 }
 
-async function gistPull(token, gistId){
-  const res=await fetch(`https://api.github.com/gists/${gistId}`, {
-    method:"GET",
-    headers:{ "Authorization":`Bearer ${token}`, "Accept":"application/vnd.github+json" }
-  });
+/* 信号检测：带 If-None-Match 探测。内容未变→304(unchanged)，有变化→200 返回数据+新ETag */
+async function gistPull(token, gistId, etag){
+  const headers={ "Authorization":`Bearer ${token}`, "Accept":"application/vnd.github+json" };
+  if(etag) headers["If-None-Match"]=etag;
+  const res=await fetch(`https://api.github.com/gists/${gistId}`, { method:"GET", headers });
+  if(res.status===304) return { unchanged:true };   // 信号未变：无需拉取
   if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.message||`HTTP ${res.status}`); }
   const j=await res.json();
   const f=j.files&&j.files["workbench-data.json"];
   if(!f) throw new Error("Gist 中未找到 workbench-data.json");
-  return { content:f.content, updatedAt:j.updated_at };
+  return { content:f.content, updatedAt:j.updated_at, etag:res.headers.get("ETag")||null };
 }
 
 /* ---- 构建同步载荷：剔除 token 明文与底板背景（双端比例不一，各自保留） ---- */
@@ -313,10 +316,10 @@ function buildSyncPayload(){
 async function syncPush(silent=false){
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId) return;
-  // 防覆盖竞争：推送前检查远端，若远端比本地记录的同步时间新（另一端有新数据），先拉取再推送
+  // 防覆盖竞争：推送前检查远端信号，若远端比本地记录的同步时间新（另一端有新数据），先拉取再推送
   try{
     const rc=await gistPull(cfg.token, cfg.gistId);
-    if(rc.updatedAt && rc.updatedAt > (cfg.lastSync || "1970-01-01T00:00:00Z")){
+    if(!rc.unchanged && rc.updatedAt && rc.updatedAt > (cfg.lastSync || "1970-01-01T00:00:00Z")){
       await syncPull(true);   // 拉取远端新数据（含另一端的变更），本地随后基于最新数据推送
     }
   }catch(e){ /* 检查失败则继续推送 */ }
@@ -328,6 +331,7 @@ async function syncPush(silent=false){
     const payload=buildSyncPayload();
     const ts=await gistPush(cfg2.token, cfg2.gistId, payload);
     cfg2.lastSync=ts; setSyncConfig(cfg2);
+    syncSignalEtag=null;    // 推送后重置信号缓存，下次探测强制全量确认
     syncState={status:"synced",lastSync:ts,error:null};
     if(!silent) toast("推送成功");
   }catch(err){
@@ -344,6 +348,11 @@ async function syncPull(silent=false){
   if(!silent) toast("正在拉取...");
   try{
     const remote=await gistPull(cfg.token, cfg.gistId);
+    if(remote.unchanged){   // 信号未变（304）：仅刷新状态，不重复拉取
+      syncState={status:"synced",lastSync:cfg.lastSync||remote.updatedAt,error:null}; updateSyncIndicator();
+      return;
+    }
+    if(remote.etag) syncSignalEtag=remote.etag;   // 记录新信号
     const remoteData=JSON.parse(remote.content);
     // 同步决策统一用 GitHub 服务器时间（updated_at / lastSync），避免双端客户端时钟差异导致"不更新"
     const remoteTS=remote.updatedAt||"1970-01-01T00:00:00Z";
@@ -2328,13 +2337,21 @@ updateSyncIndicator();
   }
 })();
 
-// 定时自动拉取（每 15 秒静默检查云端更新；不受 autoSync 控制，autoSync 只管推送）
-setInterval(()=>{
+/* 信号检测循环（每 5 秒）：304=云端无变更(信号未变)，跳过；200=云端有变更(信号变了)，立即拉取。
+   一端推送后 Gist 内容哈希(ETag)变化，对端最多 5 秒内感知到信号并同步。 */
+setInterval(async ()=>{
   const cfg=getSyncConfig();
-  if(cfg.token && cfg.gistId){
-    syncPull(true);
-  }
-}, 15000);
+  if(!cfg.token||!cfg.gistId) return;
+  if(syncSignalProbing) return;             // 上一次探测未完成，跳过本次
+  syncSignalProbing=true;
+  try{
+    const r=await gistPull(cfg.token, cfg.gistId, syncSignalEtag);
+    if(r.unchanged) return;                 // 无信号：跳过
+    syncSignalEtag=r.etag||null;            // 记录新信号
+    syncPull(true);                         // 有信号：拉取数据（不等待，异步执行）
+  }catch(e){ /* 网络/限流错误静默，下轮重试 */ }
+  finally{ syncSignalProbing=false; }
+}, 5000);
 
 // 前台返回时拉取：手机切换 App 回到页面 / PC 切回标签页立即同步
 document.addEventListener("visibilitychange", () => {
