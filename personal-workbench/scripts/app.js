@@ -241,7 +241,7 @@ function compressImage(file, maxW, maxH, quality, cb){
 /* ============================================================
    VERSION — 版本号（每次更新代码时递增，显示在设置页与侧栏底部）
    ============================================================ */
-const APP_VERSION = "v1.5.0";
+const APP_VERSION = "v1.5.1";
 
 const store = {
   load(){
@@ -336,8 +336,9 @@ async function syncPull(silent=false){
   try{
     const remote=await gistPull(cfg.token, cfg.gistId);
     const remoteData=JSON.parse(remote.content);
-    const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
-    const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
+    // 同步决策统一用 GitHub 服务器时间（updated_at / lastSync），避免双端客户端时钟差异导致"不更新"
+    const remoteTS=remote.updatedAt||"1970-01-01T00:00:00Z";
+    const localTS =cfg.lastSync||"1970-01-01T00:00:00Z";
     // 拉取后短暂抑制自动推送，避免 render() 间接触发 persist() 导致回环；结束后如有变更则补推
     suppressAutoPush=true;
     setTimeout(()=>{
@@ -2092,15 +2093,10 @@ function renderSettings() {
         const remote=await gistPull(token, gistIdInput);
         setSyncConfig({ token, gistId:gistIdInput, autoSync:$("#f-sync-auto").checked, lastSync:remote.updatedAt });
         const remoteData=JSON.parse(remote.content);
-        const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
-        const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
-        if(remoteTS>localTS){
-          data={...remoteData, __sync:getSyncConfig(), __pageBgImage:data.__pageBgImage||"", __pageBgBlur:data.__pageBgBlur??12};
-          store.save(); buildNav(); render();
-          toast("已连接并拉取最新数据");
-        }else{
-          toast("已连接，本地数据已是最新");
-        }
+        // 连接已有 Gist：以云端数据为准（单用户双端场景），保留本地底板背景与同步配置
+        data={...remoteData, __sync:getSyncConfig(), __pageBgImage:data.__pageBgImage||"", __pageBgBlur:data.__pageBgBlur??12};
+        store.save(); buildNav(); render();
+        toast("已连接并拉取最新数据");
         syncState={status:"synced",lastSync:remote.updatedAt,error:null};
         renderSettings();
       }catch(err){
