@@ -361,7 +361,8 @@ async function syncPull(silent=false){
 
 function scheduleSyncPush(){
   const cfg=getSyncConfig();
-  if(!cfg.token||!cfg.gistId||!cfg.autoSync) return;
+  if(!cfg.token||!cfg.gistId) return;
+  if(cfg.autoSync === false) return;          // 仅显式关闭时跳过（undefined 视为开启，兼容旧数据）
   if(suppressAutoPush){ pendingPush = true; return; }  // 抑制窗口内先标记，结束后补推，不丢弃
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(()=>syncPush(true), 1500);
@@ -1825,6 +1826,9 @@ function renderSettings() {
     data.__pageBgBlur = parseInt($("#f-pagebg-blur").value) || 0;
     data.__sidebarOpacity = parseFloat($("#f-sidebar-opacity").value) || 1;
     data.__cardOpacity = parseFloat($("#f-card-opacity").value) || 1;
+    // 保存"自动同步"复选框状态到同步配置
+    const autoEl = $("#f-sync-auto");
+    if(autoEl) setSyncConfig({ autoSync: autoEl.checked });
     persist();
     buildNav();          // 刷新侧栏/抽屉中的用户名与头像
     applyPageBg();
@@ -2138,7 +2142,7 @@ function ifPullOnView(v){
   // 设置页不拉取（避免打断填写），其余视图切换时拉取并给出可见反馈
   if(v === "settings") return;
   const cfg = getSyncConfig();
-  if(!cfg.token || !cfg.gistId) return;
+  if(!cfg.token || !cfg.gistId || cfg.autoSync === false) return;
   const now = Date.now();
   if(now - lastPullByView < 2000) return;   // 2 秒节流，快速切换不重复拉取
   lastPullByView = now;
@@ -2305,10 +2309,10 @@ updateSyncIndicator();
   }
 })();
 
-// 定时自动拉取（每 15 秒静默检查云端更新，仅开启自动同步时生效）
+// 定时自动拉取（每 15 秒静默检查云端更新，autoSync 未显式关闭时生效）
 setInterval(()=>{
   const cfg=getSyncConfig();
-  if(cfg.token && cfg.gistId && cfg.autoSync){
+  if(cfg.token && cfg.gistId && cfg.autoSync !== false){
     syncPull(true);
   }
 }, 15000);
@@ -2317,7 +2321,7 @@ setInterval(()=>{
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState === "visible"){
     const cfg = getSyncConfig();
-    if(cfg.token && cfg.gistId && cfg.autoSync){
+    if(cfg.token && cfg.gistId && cfg.autoSync !== false){
       syncPull(true);
     }
   }
