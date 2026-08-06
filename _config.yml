@@ -1,0 +1,16 @@
+title: Personal Workbench
+description: Personal workbench desktop and mobile app
+
+# 排除非网页文件，避免 Jekyll 处理报错
+exclude:
+  - SKILL.md
+  - manifest.json
+  - .github
+  - .gitignore
+  - .trae-html-share-packages
+
+# 禁用插件避免依赖问题
+plugins: []
+
+# 不使用 Gemfile
+gemfile: false
