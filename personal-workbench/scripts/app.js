@@ -260,6 +260,7 @@ let data = store.load();
 let syncState = { status:"idle", lastSync:null, error:null };
 let syncPushTimer = null;
 let suppressAutoPush = false;  // 拉取后短暂抑制自动推送，避免回环
+let pendingPush = false;       // 抑制窗口内有变更时标记，结束后补推
 
 function getSyncConfig(){ return data.__sync || {}; }
 function setSyncConfig(cfg){ data.__sync = { ...getSyncConfig(), ...cfg }; store.save(); }
@@ -332,9 +333,12 @@ async function syncPull(silent=false){
     const remoteData=JSON.parse(remote.content);
     const localTS=data.__lastModified||"1970-01-01T00:00:00Z";
     const remoteTS=remoteData.__lastModified||remote.updatedAt||"1970-01-01T00:00:00Z";
-    // 拉取后短暂抑制自动推送，避免 render() 间接触发 persist() 导致回环
+    // 拉取后短暂抑制自动推送，避免 render() 间接触发 persist() 导致回环；结束后如有变更则补推
     suppressAutoPush=true;
-    setTimeout(()=>{ suppressAutoPush=false; }, 5000);
+    setTimeout(()=>{
+      suppressAutoPush=false;
+      if(pendingPush){ pendingPush=false; syncPush(true); }
+    }, 5000);
     if(remoteTS>localTS){
       // 保留本地底板背景（双端不互相同步）与同步配置
       data={...remoteData, __sync:cfg, __pageBgImage:data.__pageBgImage||"", __pageBgBlur:data.__pageBgBlur??12};
@@ -356,9 +360,9 @@ async function syncPull(silent=false){
 }
 
 function scheduleSyncPush(){
-  if(suppressAutoPush) return;
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId||!cfg.autoSync) return;
+  if(suppressAutoPush){ pendingPush = true; return; }  // 抑制窗口内先标记，结束后补推，不丢弃
   clearTimeout(syncPushTimer);
   syncPushTimer=setTimeout(()=>syncPush(true), 1500);
 }
@@ -1797,7 +1801,7 @@ function renderSettings() {
       <div class="field"><label>GitHub Token</label><input id="f-sync-token" type="password" value="${attr(getSyncConfig().token||'')}" placeholder="ghp_xxx... (需 gist 权限)"/></div>
       <div class="field"><label>Gist ID</label><input id="f-sync-gistid" value="${attr(getSyncConfig().gistId||'')}" placeholder="留空则自动创建新 Gist"/></div>
       <div class="field" style="flex-direction:row;align-items:center;gap:8px;">
-        <input type="checkbox" id="f-sync-auto" ${getSyncConfig().autoSync?'checked':''} style="width:auto;"/>
+        <input type="checkbox" id="f-sync-auto" ${getSyncConfig().autoSync===false?'':'checked'} style="width:auto;"/>
         <label for="f-sync-auto" style="margin:0;cursor:pointer;">自动同步（数据变更后 1.5 秒自动推送）</label>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:5px;">
