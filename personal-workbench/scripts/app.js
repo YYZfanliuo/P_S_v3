@@ -241,7 +241,7 @@ function compressImage(file, maxW, maxH, quality, cb){
 /* ============================================================
    VERSION — 版本号（每次更新代码时递增，显示在设置页与侧栏底部）
    ============================================================ */
-const APP_VERSION = "v1.5.1";
+const APP_VERSION = "v1.5.2";
 
 const store = {
   load(){
@@ -313,12 +313,21 @@ function buildSyncPayload(){
 async function syncPush(silent=false){
   const cfg=getSyncConfig();
   if(!cfg.token||!cfg.gistId) return;
+  // 防覆盖竞争：推送前检查远端，若远端比本地记录的同步时间新（另一端有新数据），先拉取再推送
+  try{
+    const rc=await gistPull(cfg.token, cfg.gistId);
+    if(rc.updatedAt && rc.updatedAt > (cfg.lastSync || "1970-01-01T00:00:00Z")){
+      await syncPull(true);   // 拉取远端新数据（含另一端的变更），本地随后基于最新数据推送
+    }
+  }catch(e){ /* 检查失败则继续推送 */ }
+  const cfg2=getSyncConfig();
+  if(!cfg2.token||!cfg2.gistId) return;
   syncState={status:"pushing",lastSync:syncState.lastSync,error:null}; updateSyncIndicator();
   if(!silent) toast("正在推送...");
   try{
     const payload=buildSyncPayload();
-    const ts=await gistPush(cfg.token, cfg.gistId, payload);
-    cfg.lastSync=ts; setSyncConfig(cfg);
+    const ts=await gistPush(cfg2.token, cfg2.gistId, payload);
+    cfg2.lastSync=ts; setSyncConfig(cfg2);
     syncState={status:"synced",lastSync:ts,error:null};
     if(!silent) toast("推送成功");
   }catch(err){
@@ -2145,10 +2154,10 @@ function renderSettings() {
 /* ---------- router / sidebar ---------- */
 let lastPullByView = 0;   // 视图切换拉取节流时间戳
 function ifPullOnView(v){
-  // 设置页不拉取（避免打断填写），其余视图切换时拉取并给出可见反馈
+  // 设置页不拉取（避免打断填写），其余视图切换时拉取并给出可见反馈（autoSync 只管推送，不影响拉取）
   if(v === "settings") return;
   const cfg = getSyncConfig();
-  if(!cfg.token || !cfg.gistId || cfg.autoSync === false) return;
+  if(!cfg.token || !cfg.gistId) return;
   const now = Date.now();
   if(now - lastPullByView < 2000) return;   // 2 秒节流，快速切换不重复拉取
   lastPullByView = now;
@@ -2319,20 +2328,27 @@ updateSyncIndicator();
   }
 })();
 
-// 定时自动拉取（每 15 秒静默检查云端更新，autoSync 未显式关闭时生效）
+// 定时自动拉取（每 15 秒静默检查云端更新；不受 autoSync 控制，autoSync 只管推送）
 setInterval(()=>{
   const cfg=getSyncConfig();
-  if(cfg.token && cfg.gistId && cfg.autoSync !== false){
+  if(cfg.token && cfg.gistId){
     syncPull(true);
   }
 }, 15000);
 
-// 前台返回时拉取：手机切换 App 回到页面立即同步（备选增强）
+// 前台返回时拉取：手机切换 App 回到页面 / PC 切回标签页立即同步
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState === "visible"){
     const cfg = getSyncConfig();
-    if(cfg.token && cfg.gistId && cfg.autoSync !== false){
+    if(cfg.token && cfg.gistId){
       syncPull(true);
     }
+  }
+});
+// PC 端切回标签页必触发 focus（兼容后台定时器被节流的场景）
+window.addEventListener("focus", () => {
+  const cfg = getSyncConfig();
+  if(cfg.token && cfg.gistId){
+    syncPull(true);
   }
 });
