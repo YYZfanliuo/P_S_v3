@@ -51,18 +51,18 @@ const CONFIG = {
 
   // ============ 模块定义 ============
   modules: [
-    { key:"todo", name:"今日计划", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪",
+    { key:"todo", name:"今日计划", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪", category:"今日行动",
       priorities:[ {key:"P0",label:"重要",color:"#f6ece9",text:"#c25d4f"}, {key:"P1",label:"一般",color:"#f6efe6",text:"#bd8a4e"}, {key:"P2",label:"随手",color:"#eef2ec",text:"#6f8f6a"} ],
       seed:[ {id:11,title:"完成英语核心词汇 30min",priority:"P0",done:false,note:"积累词汇量，稳步提升英语能力"},
              {id:12,title:"发布 1 篇笔记 / 视频",priority:"P1",done:false,note:""},
              {id:13,title:"整理今日工作纪要",priority:"P2",done:true,note:""} ] },
-    { key:"checkin", name:"习惯打卡", icon:"leaf", tint:"#eef3ec", color:"var(--module-1)", type:"checkin", desc:"补品·护肤·早睡等每日打卡",
+    { key:"checkin", name:"习惯打卡", icon:"leaf", tint:"#eef3ec", color:"var(--module-1)", type:"checkin", desc:"补品·护肤·早睡等每日打卡", category:"今日行动",
       seed:[ {id:21,title:"喝够 8 杯水",log:{}}, {id:22,title:"23:30 前睡觉",log:{}}, {id:23,title:"维生素 / 补品",log:{}} ] },
-    { key:"read", name:"阅读打卡", icon:"book", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"页", desc:"书籍进度·摘录·想法",
+    { key:"read", name:"阅读打卡", icon:"book", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"页", desc:"书籍进度·摘录·想法", category:"打卡追踪",
       seed:[ {id:31,title:"《认知觉醒》",current:168,target:300,unit:"页",note:"第 7 章：习惯的复利，早晚各读 30 分钟"}, {id:32,title:"《原子习惯》",current:90,target:260,unit:"页",note:"聚焦身份认同的养成，做好读书笔记"} ] },
     { key:"sport", name:"每日锻炼", icon:"activity", tint:"#f6f0e6", color:"var(--module-3)", type:"progress", unit:"分钟", desc:"游泳·跑步·力量训练", category:"打卡追踪",
       seed:[ {id:41,title:"力量训练",current:12,target:20,unit:"分钟",note:"核心 + 上肢，组间休息 60 秒"}, {id:42,title:"跑步",current:30,target:40,unit:"分钟",note:"慢跑热身，配速 6 分半保持心率"} ] },
-    { key:"money", name:"记账本", icon:"wallet", tint:"#f6efe8", color:"var(--module-4)", type:"finance", desc:"收入·支出·分类·占比",
+    { key:"money", name:"记账本", icon:"wallet", tint:"#f6efe8", color:"var(--module-4)", type:"finance", desc:"收入·支出·分类·占比", category:"打卡追踪",
       categories:["餐饮","交通","购物","居家","娱乐","工资","其他"],
       fields:[
         { key:"spendTag", label:"支出标签", type:"select", options:["必要固定支出","不必要固定支出","必要不固定支出","不固定不必要支出"] }
@@ -70,13 +70,13 @@ const CONFIG = {
       seed:[ {id:51,title:"午餐",type:"expense",amount:32,category:"餐饮",spendTag:"必要不固定支出",date:isoToday()},
              {id:52,title:"地铁",type:"expense",amount:6,category:"交通",spendTag:"必要固定支出",date:isoToday()},
              {id:53,title:"稿费",type:"income",amount:400,category:"工资",date:isoToday()} ] },
-    { key:"note", name:"心情日记", icon:"pen", tint:"#f1eef4", color:"var(--module-5)", type:"note", desc:"文字·摘录·心情记录",
+    { key:"note", name:"心情日记", icon:"pen", tint:"#f1eef4", color:"var(--module-5)", type:"note", desc:"文字·摘录·心情记录", category:"内容记录",
       moods:["开心","平静","低落","焦虑","疲惫"],
       seed:[ {id:61,title:"今天的小确幸",content:"阳台的多肉冒出了新芽，顺手拍了张照片。",mood:"开心",date:isoToday()} ] },
-    { key:"hot", name:"今日热点", icon:"flame", tint:"#f6ece9", color:"var(--danger)", type:"note", desc:"热点内容·收藏·稍后阅读",
+    { key:"hot", name:"今日热点", icon:"flame", tint:"#f6ece9", color:"var(--danger)", type:"note", desc:"热点内容·收藏·稍后阅读", category:"内容记录",
       moods:["收藏","稍后读","已读"],
       seed:[ {id:71,title:"AI 提示词技巧合集",content:"整理常用提示词模板，方便复用。",mood:"收藏",date:isoToday()} ] },
-    { key:"learning", name:"学习进度", icon:"graduation-cap", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"课时", desc:"追踪学习课程、技能和目标",
+    { key:"learning", name:"学习进度", icon:"graduation-cap", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"课时", desc:"追踪学习课程、技能和目标", category:"打卡追踪",
       seed:[ {id:Date.now(), title:"前端开发入门", current:15, target:40, unit:"课时", note:"完成 HTML/CSS 基础，开始 JavaScript"} ] },
     { key:"recipes", name:"食谱与餐单", icon:"cooking-pot", tint:"#f6efe8", color:"var(--module-4)", type:"note", desc:"收藏食谱，规划每日用餐", category:"内容记录",
       fields:[
@@ -2265,24 +2265,19 @@ function buildNav(){
   applyPageBg(); // Apply page background image + blur
   applyOpacity(); // Apply sidebar + card opacity
 
-  const groupedModules = {};
+  const groupedModules = {"今日行动":[], "打卡追踪":[], "内容记录":[]};
   CONFIG.modules.forEach(m => {
-    const category = m.category || "功能模块"; // Default category
-    if (!groupedModules[category]) {
-      groupedModules[category] = [];
-    }
-    groupedModules[category].push(m);
+    const category = m.category || "内容记录";
+    (groupedModules[category] || groupedModules["内容记录"]).push(m);
   });
 
   let html = [`<div class="navi" data-go="home">${icon("home",19)}首页</div>`];
-
-  // Render grouped modules
-  for (const categoryName in groupedModules) {
+  ["今日行动", "打卡追踪", "内容记录"].forEach(categoryName => {
     html.push(`<div class="nav-sep">${categoryName}</div>`);
     groupedModules[categoryName].forEach(m => {
       html.push(`<div class="navi" data-go="${m.key}">${icon(m.icon,19)}${m.name}</div>`);
     });
-  }
+  });
 
   html.push(`<div class="nav-sep">统计</div>`, `<div class="navi" data-go="insight">${icon("chart",19)}洞察复盘</div>`);
   // Theme toggle button
