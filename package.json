@@ -1,0 +1,20 @@
+{
+  "name": "personal-workbench-app",
+  "version": "1.6.0",
+  "description": "个人工作台 App",
+  "private": true,
+  "scripts": {
+    "build:android": "npx cap sync android && cd android && gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

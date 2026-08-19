@@ -51,18 +51,18 @@ const CONFIG = {
 
   // ============ 模块定义 ============
   modules: [
-    { key:"todo", name:"今日计划", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪",
+    { key:"todo", name:"今日计划", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪", category:"今日行动",
       priorities:[ {key:"P0",label:"重要",color:"#f6ece9",text:"#c25d4f"}, {key:"P1",label:"一般",color:"#f6efe6",text:"#bd8a4e"}, {key:"P2",label:"随手",color:"#eef2ec",text:"#6f8f6a"} ],
       seed:[ {id:11,title:"完成英语核心词汇 30min",priority:"P0",done:false,note:"积累词汇量，稳步提升英语能力"},
              {id:12,title:"发布 1 篇笔记 / 视频",priority:"P1",done:false,note:""},
              {id:13,title:"整理今日工作纪要",priority:"P2",done:true,note:""} ] },
-    { key:"checkin", name:"习惯打卡", icon:"leaf", tint:"#eef3ec", color:"var(--module-1)", type:"checkin", desc:"补品·护肤·早睡等每日打卡",
+    { key:"checkin", name:"习惯打卡", icon:"leaf", tint:"#eef3ec", color:"var(--module-1)", type:"checkin", desc:"补品·护肤·早睡等每日打卡", category:"今日行动",
       seed:[ {id:21,title:"喝够 8 杯水",log:{}}, {id:22,title:"23:30 前睡觉",log:{}}, {id:23,title:"维生素 / 补品",log:{}} ] },
-    { key:"read", name:"阅读打卡", icon:"book", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"页", desc:"书籍进度·摘录·想法",
+    { key:"read", name:"阅读打卡", icon:"book", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"页", desc:"书籍进度·摘录·想法", category:"打卡追踪",
       seed:[ {id:31,title:"《认知觉醒》",current:168,target:300,unit:"页",note:"第 7 章：习惯的复利，早晚各读 30 分钟"}, {id:32,title:"《原子习惯》",current:90,target:260,unit:"页",note:"聚焦身份认同的养成，做好读书笔记"} ] },
     { key:"sport", name:"每日锻炼", icon:"activity", tint:"#f6f0e6", color:"var(--module-3)", type:"progress", unit:"分钟", desc:"游泳·跑步·力量训练", category:"打卡追踪",
       seed:[ {id:41,title:"力量训练",current:12,target:20,unit:"分钟",note:"核心 + 上肢，组间休息 60 秒"}, {id:42,title:"跑步",current:30,target:40,unit:"分钟",note:"慢跑热身，配速 6 分半保持心率"} ] },
-    { key:"money", name:"记账本", icon:"wallet", tint:"#f6efe8", color:"var(--module-4)", type:"finance", desc:"收入·支出·分类·占比",
+    { key:"money", name:"记账本", icon:"wallet", tint:"#f6efe8", color:"var(--module-4)", type:"finance", desc:"收入·支出·分类·占比", category:"打卡追踪",
       categories:["餐饮","交通","购物","居家","娱乐","工资","其他"],
       fields:[
         { key:"spendTag", label:"支出标签", type:"select", options:["必要固定支出","不必要固定支出","必要不固定支出","不固定不必要支出"] }
@@ -70,13 +70,13 @@ const CONFIG = {
       seed:[ {id:51,title:"午餐",type:"expense",amount:32,category:"餐饮",spendTag:"必要不固定支出",date:isoToday()},
              {id:52,title:"地铁",type:"expense",amount:6,category:"交通",spendTag:"必要固定支出",date:isoToday()},
              {id:53,title:"稿费",type:"income",amount:400,category:"工资",date:isoToday()} ] },
-    { key:"note", name:"心情日记", icon:"pen", tint:"#f1eef4", color:"var(--module-5)", type:"note", desc:"文字·摘录·心情记录",
+    { key:"note", name:"心情日记", icon:"pen", tint:"#f1eef4", color:"var(--module-5)", type:"note", desc:"文字·摘录·心情记录", category:"内容记录",
       moods:["开心","平静","低落","焦虑","疲惫"],
       seed:[ {id:61,title:"今天的小确幸",content:"阳台的多肉冒出了新芽，顺手拍了张照片。",mood:"开心",date:isoToday()} ] },
-    { key:"hot", name:"今日热点", icon:"flame", tint:"#f6ece9", color:"var(--danger)", type:"note", desc:"热点内容·收藏·稍后阅读",
+    { key:"hot", name:"今日热点", icon:"flame", tint:"#f6ece9", color:"var(--danger)", type:"note", desc:"热点内容·收藏·稍后阅读", category:"内容记录",
       moods:["收藏","稍后读","已读"],
       seed:[ {id:71,title:"AI 提示词技巧合集",content:"整理常用提示词模板，方便复用。",mood:"收藏",date:isoToday()} ] },
-    { key:"learning", name:"学习进度", icon:"graduation-cap", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"课时", desc:"追踪学习课程、技能和目标",
+    { key:"learning", name:"学习进度", icon:"graduation-cap", tint:"#edf1f5", color:"var(--module-2)", type:"progress", unit:"课时", desc:"追踪学习课程、技能和目标", category:"打卡追踪",
       seed:[ {id:Date.now(), title:"前端开发入门", current:15, target:40, unit:"课时", note:"完成 HTML/CSS 基础，开始 JavaScript"} ] },
     { key:"recipes", name:"食谱与餐单", icon:"cooking-pot", tint:"#f6efe8", color:"var(--module-4)", type:"note", desc:"收藏食谱，规划每日用餐", category:"内容记录",
       fields:[
@@ -87,7 +87,7 @@ const CONFIG = {
         { key: "ingredients", label: "主要食材", type: "textarea", placeholder: "列出主要食材..." }
       ],
       seed:[ {id:Date.now() + 1, title:"香煎三文鱼", content:"健康美味的快速晚餐选择。", cuisine:"西餐", prepTime:"10分钟", cookTime:"15分钟", servings:1, ingredients:"三文鱼、柠檬、橄榄油、时蔬", date:isoToday()} ] },
-    { key:"projects", name:"项目管理", icon:"briefcase", tint:"#f1eef4", color:"var(--module-5)", type:"todo", desc:"管理个人项目，追踪任务和里程碑",
+    { key:"projects", name:"项目管理", icon:"briefcase", tint:"#f1eef4", color:"var(--module-5)", type:"todo", desc:"管理个人项目，追踪任务和里程碑", category:"内容记录",
       fields:[
         { key: "projectStatus", label: "项目状态", type: "select", options: ["进行中", "已暂停", "已完成", "待开始"] },
         { key: "dueDate", label: "截止日期", type: "text", placeholder: "YYYY-MM-DD" },
@@ -427,8 +427,8 @@ function updateStatusBar(){
 updateStatusBar();
 
 let view = "home";
-let scheduleViewMode = "daily";
 let timetableViewMode = "daily";
+let scheduleViewMode = "daily";
 let scheduleWeekOffset = 0;   // 0=本周, -1=上周, 1=下周 …
 let scheduleMonthOffset = 0;  // 0=本月, -1=上月, 1=下月 …
 let scheduleSelectedDate = null; // null=今天, 或 "YYYY-MM-DD"
@@ -640,7 +640,7 @@ function timetableTileHTML(){
     content = `<div class="focus-empty">今天的课程已全部结束</div>`;
   }
 
-  return `<div class="tile b12"><div class="tile-h"><span class="tic">${icon("calendar-days",16)}</span><div class="tt"><span class="en">TODAY'S CLASSES</span><span class="zh">今日课程</span></div><span class="r js-open" data-open="timetable">查看全部</span></div>
+  return `<div class="tile b4"><div class="tile-h"><span class="tic">${icon("calendar-days",16)}</span><div class="tt"><span class="en">TODAY'S CLASSES</span><span class="zh">今日课程</span></div><span class="r js-open" data-open="timetable">查看全部</span></div>
     ${content}</div>`;
 }
 /* 日程管理首页卡片 */
@@ -859,22 +859,27 @@ function renderHome(){
       <div class="cmeta"><span>${dateStr()}</span><span class="dot"></span><span>第 ${weekNum()} 周</span></div></div></div>`;
 
   $("#screen").innerHTML = `
-    ${grp("今日行动","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;ACTION")}
+    ${grp("今日节奏","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;RHYTHM")}
     <div class="bento">
       ${clockCard}
       ${focusTileHTML()}
       ${quickTileHTML()}
+      ${timetableTileHTML()}
       ${scheduleTileHTML()}
+      ${overviewTileHTML()}
     </div>
 
-    ${grp("今日课程","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;CLASSES")}
-    <div class="bento">${timetableTileHTML()}</div>
+    ${grp("习惯与待办","HABITS&nbsp;&nbsp;&&nbsp;&nbsp;TASKS")}
+    <div class="bento">${habitTileHTML()}${todoTileHTML()}</div>
 
-    ${grp("打卡追踪","TRACKING&nbsp;&nbsp;·&nbsp;&nbsp;PROGRESS")}
-    <div class="bento">${overviewTileHTML()}${habitTileHTML()}${todoTileHTML()}${booksTileHTML()}${goalsTileHTML()}${healthTileHTML()}${spendTileHTML()}</div>
+    ${grp("专注与状态","FOCUS&nbsp;&nbsp;&&nbsp;&nbsp;MOOD")}
+    <div class="bento">${pomoTileHTML()}${trendTileHTML()}</div>
 
-    ${grp("内容记录","CONTENT&nbsp;&nbsp;·&nbsp;&nbsp;RECORDS")}
-    <div class="bento">${trendTileHTML()}${pomoTileHTML()}</div>`;
+    ${grp("收支与成长","MONEY&nbsp;&nbsp;&&nbsp;&nbsp;GROWTH")}
+    <div class="bento">${spendTileHTML()}${booksTileHTML()}${goalsTileHTML()}</div>
+
+    ${grp("健康生活","HEALTH&nbsp;&nbsp;&&nbsp;&nbsp;WELLNESS")}
+    <div class="bento">${healthTileHTML()}</div>`;
   wireHome();
   startClock();
 }
@@ -1232,6 +1237,17 @@ function renderMonthlySchedule() {
 }
 
 /* ---------- MODULE VIEW ---------- */
+function renderTimetableWeekView(allClasses){
+  const days=["周一","周二","周三","周四","周五","周六","周日"];
+  const currentWeek=getCurrentTermWeekNumber();
+  const active=allClasses.filter(x=>isClassActiveInWeek(x,currentWeek));
+  const columns=days.map(day=>{
+    const items=active.filter(x=>x.dayOfWeek===day).sort((a,b)=>String(a.startTime).localeCompare(String(b.startTime)));
+    const rows=items.length?items.map(x=>`<div class="timetable-week-item" data-edit-timetable="${x.id}"><strong>${esc(x.courseName||x.title||"未命名课程")}</strong><span>${esc(x.startTime||"")} - ${esc(x.endTime||"")}</span><small>${esc(x.location||"未设置地点")}</small></div>`).join(""): `<div class="timetable-week-empty">暂无课程</div>`;
+    return `<div class="timetable-week-col"><div class="timetable-week-day">${day}</div>${rows}</div>`;
+  }).join("");
+  return `<div class="timetable-week-panel"><div class="sec-title">第 ${currentWeek} 周课程安排</div><div class="timetable-week-grid">${columns}</div></div>`;
+}
 /* 通用搜索：标题/备注/正文 + 自定义字段 + 类型特有字段 */
 function matchSearch(x, q, m){
   if((x.title||"").toLowerCase().includes(q)) return true;
@@ -1245,18 +1261,6 @@ function matchSearch(x, q, m){
     if(x[f.key] && String(x[f.key]).toLowerCase().includes(q)) return true;
   }
   return false;
-}
-
-function renderTimetableWeekView(allClasses){
-  const days = ["周一","周二","周三","周四","周五","周六","周日"];
-  const currentWeek = getCurrentTermWeekNumber();
-  const active = allClasses.filter(x => isClassActiveInWeek(x, currentWeek));
-  const columns = days.map(day => {
-    const items = active.filter(x => x.dayOfWeek === day).sort((a,b) => String(a.startTime).localeCompare(String(b.startTime)));
-    const rows = items.length ? items.map(x => `<div class="timetable-week-item" data-edit-timetable="${x.id}"><strong>${esc(x.courseName || x.title || "未命名课程")}</strong><span>${esc(x.startTime || "")} - ${esc(x.endTime || "")}</span><small>${esc(x.location || "未设置地点")}</small></div>`).join("") : `<div class="timetable-week-empty">暂无课程</div>`;
-    return `<div class="timetable-week-col"><div class="timetable-week-day">${day}</div>${rows}</div>`;
-  }).join("");
-  return `<div class="timetable-week-panel"><div class="sec-title">第 ${currentWeek} 周课程安排</div><div class="timetable-week-grid">${columns}</div></div>`;
 }
 
 function renderModule(key){
@@ -1297,7 +1301,6 @@ function renderModule(key){
     const currentWeek = getCurrentTermWeekNumber();
     head=`<div class="hero"><div class="hero-ic" style="background:${m.tint};color:${m.color}">${icon(m.icon,24)}</div>
       <div class="hero-tx"><div class="hero-row"><span class="hero-v">第 ${currentWeek} 周</span><span class="hero-l">当前学期周数</span></div></div></div>`;
-    if(timetableViewMode === "weekly") head += renderTimetableWeekView(data.timetable || []);
   }
 
   // 记账月度选择器
@@ -1320,7 +1323,6 @@ function renderModule(key){
 
   const body = it.length ? it.map(x=>recHTML(m,x)).join("")
     : `<div class="empty"><span class="e">${icon(m.icon,28)}</span><div>${q?'没有匹配的记录':'还没有记录，点右上角「新建」添加第一条吧'}</div></div>`;
-  const timetableView = m.type === "timetable" ? `<div class="seg timetable-switch" id="timetable-view-switcher"><div class="opt ${timetableViewMode === 'daily' ? 'on' : ''}" data-v="daily">日视图</div><div class="opt ${timetableViewMode === 'weekly' ? 'on' : ''}" data-v="weekly">周视图</div></div>${timetableViewMode === "weekly" ? renderTimetableWeekView(all) : ""}` : "";
 
   const sectionTitle = m.type==="finance" ? (moneyMonth?`${moneyMonth.split('-')[0]}年${parseInt(moneyMonth.split('-')[1],10)}月记录`:"全部记录") : "全部记录";
 
@@ -1330,7 +1332,7 @@ function renderModule(key){
       ${monthNav}
       <div class="spacer"></div><button class="btn" id="btn-new">${icon("plus",16,2.2)}新建</button></div>
     ${head}
-    ${timetableView}
+    ${m.type === "timetable" ? `<div class="seg timetable-switch" id="timetable-view-switcher"><div class="opt ${timetableViewMode === 'daily' ? 'on' : ''}" data-v="daily">日视图</div><div class="opt ${timetableViewMode === 'weekly' ? 'on' : ''}" data-v="weekly">周视图</div></div>${timetableViewMode === "weekly" ? renderTimetableWeekView(all) : ""}` : ""}
     <div class="mod-layout">
       <div class="mod-main">
         <div class="sec-title">${sectionTitle} <span id="rec-count" style="margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:12px">${it.length} 条</span></div>
@@ -1361,9 +1363,9 @@ function renderModule(key){
     if(allBtn) allBtn.onclick=()=>{ moneyMonth=""; renderModule(key); };
   }
   if(m.type === "timetable"){
-    const switcher = $("#timetable-view-switcher");
-    if(switcher) switcher.querySelectorAll(".opt").forEach(opt => opt.onclick = () => { timetableViewMode = opt.dataset.v; renderModule(key); });
-    $("#screen").querySelectorAll("[data-edit-timetable]").forEach(el => el.onclick = () => openEditor(key, (data[key] || []).find(x => x.id == el.dataset.editTimetable)));
+    const switcher=$("#timetable-view-switcher");
+    if(switcher) switcher.querySelectorAll(".opt").forEach(opt=>opt.onclick=()=>{ timetableViewMode=opt.dataset.v; renderModule(key); });
+    $("#screen").querySelectorAll("[data-edit-timetable]").forEach(el=>el.onclick=()=>openEditor(key,(data[key]||[]).find(x=>x.id==el.dataset.editTimetable)));
   }
   wireModule(key);
 }
@@ -2212,9 +2214,9 @@ function renderSettings() {
 }
 
 /* ---------- router / sidebar ---------- */
-let lastPullByView = 0;   // 保留节流状态，页面切换不再触发同步提示
+let lastPullByView = 0;   // 页面切换不触发同步提示
 function ifPullOnView(v){
-  // 页面切换只负责渲染，云端同步仅由设置页中的手动按钮触发。
+  // 仅在设置页手动连接、上传或拉取时显示同步提示。
   return;
 }
 function dateStr(){ const n=new Date(); const wd="日一二三四五六"[n.getDay()]; return `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 周${wd}`; }
