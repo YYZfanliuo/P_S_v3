@@ -3,7 +3,7 @@
 ## 本轮完成
 
 - 将当前工作台完整工作区发布到 GitHub 仓库 `YYZfanliuo/P_S_v3` 的 `main` 分支。
-- 提交版本：`0922bdf`（`deploy AI workbench updates`）。
+- 部署提交：`0922bdf`（`deploy AI workbench updates`）；部署记录提交：`8389da3`（`record GitHub Pages deployment`）。
 - 已触发仓库中的 GitHub Pages Actions 部署流程。
 - GitHub Pages 首页已返回 HTTP 200，桌面端入口可访问；线上 `scripts/app.js` 与 `www/index.html` 资源也可正常返回。
 
