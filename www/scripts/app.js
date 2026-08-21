@@ -2,7 +2,7 @@
    CONFIG — 唯一需要定制的地方（与手机版结构一致）。
    modules 里每个模块 = 一个功能页；type 决定它长什么样、记什么字段。
    支持的 type：
-     todo     今日计划/待办（勾选 + 优先级）
+     todo     待办/待办（勾选 + 优先级）
      checkin  习惯打卡（连续天数，每天清零）
      progress 长期计划（进度条：当前/目标）
      finance  记账（收入/支出 + 分类 + 金额）
@@ -27,7 +27,7 @@ const CONFIG = {
 
   // 今日概览环形（value 为 0-100 的完成度，calc 返回 {value, sub}）
   overview: [
-    { key:"todo", label:"今日计划", icon:"list", color:"var(--accent)",
+    { key:"todo", label:"待办", icon:"list", color:"var(--accent)",
       calc: d => { const it=d.todo||[]; const done=it.filter(x=>x.done).length; return { value: it.length?Math.round(done/it.length*100):0, sub:`${done}/${it.length} 项` }; } },
     { key:"checkin", label:"打卡", icon:"leaf", color:"var(--module-1)",
       calc: d => { const it=d.checkin||[]; const t=today(); const done=it.filter(x=>x.log&&x.log[t]).length; return { value: it.length?Math.round(done/it.length*100):0, sub:`${done}/${it.length} 项` }; } },
@@ -51,7 +51,7 @@ const CONFIG = {
 
   // ============ 模块定义 ============
   modules: [
-    { key:"todo", name:"今日计划", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪", category:"今日行动",
+    { key:"todo", name:"待办", icon:"list", tint:"#efeee8", color:"var(--accent)", type:"todo", desc:"任务清单与进度追踪", category:"今日行动",
       priorities:[ {key:"P0",label:"重要",color:"#f6ece9",text:"#c25d4f"}, {key:"P1",label:"一般",color:"#f6efe6",text:"#bd8a4e"}, {key:"P2",label:"随手",color:"#eef2ec",text:"#6f8f6a"} ],
       seed:[ {id:11,title:"完成英语核心词汇 30min",priority:"P0",done:false,note:"积累词汇量，稳步提升英语能力"},
              {id:12,title:"发布 1 篇笔记 / 视频",priority:"P1",done:false,note:""},
@@ -87,7 +87,7 @@ const CONFIG = {
         { key: "ingredients", label: "主要食材", type: "textarea", placeholder: "列出主要食材..." }
       ],
       seed:[ {id:Date.now() + 1, title:"香煎三文鱼", content:"健康美味的快速晚餐选择。", cuisine:"西餐", prepTime:"10分钟", cookTime:"15分钟", servings:1, ingredients:"三文鱼、柠檬、橄榄油、时蔬", date:isoToday()} ] },
-    { key:"projects", name:"项目管理", icon:"briefcase", tint:"#f1eef4", color:"var(--module-5)", type:"todo", desc:"管理个人项目，追踪任务和里程碑", category:"内容记录",
+    { key:"projects", name:"项目管理", icon:"briefcase", tint:"#f1eef4", color:"var(--module-5)", type:"todo", desc:"管理个人项目，追踪任务和里程碑",
       fields:[
         { key: "projectStatus", label: "项目状态", type: "select", options: ["进行中", "已暂停", "已完成", "待开始"] },
         { key: "dueDate", label: "截止日期", type: "text", placeholder: "YYYY-MM-DD" },
@@ -150,6 +150,7 @@ const ICONS = {
   camera:'<path d="M4 8.5h3l1.5-2h7L17 8.5h3v10H4z"/><circle cx="12" cy="13" r="3.2"/>',
   flame:'<path d="M12 3c3 3 5 5.5 5 9a5 5 0 0 1-10 0c0-2 1-3.6 2.6-4.6C9 10.4 10.4 6.2 12 3z"/>',
   target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
   star:'<path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.8L12 16.9l-5.2 2.75 1-5.8-4.2-4.1 5.8-.85z"/>',
   quote:'<path d="M9.5 7C7.6 7.9 6.5 9.6 6.5 12v5h5v-6H8.5c0-1.7.7-2.7 2.2-3.4zM19 7c-1.9.9-3 2.6-3 5v5h5v-6h-3c0-1.7.7-2.7 2.2-3.4z"/>',
   chevron:'<path d="M9 5l7 7-7 7"/>',
@@ -189,6 +190,12 @@ function localDateStr(d){
   const m=pad2(d.getMonth()+1);
   const day=pad2(d.getDate());
   return `${y}-${m}-${day}`;
+}
+function shiftDate(dateValue, days){
+  const d = new Date(`${dateValue || isoToday()}T12:00:00`);
+  if(Number.isNaN(d.getTime())) return isoToday();
+  d.setDate(d.getDate() + days);
+  return localDateStr(d);
 }
 /** 月份偏移："YYYY-MM" 加减 n 个月 */
 function shiftMonth(ym, n){
@@ -241,13 +248,45 @@ function compressImage(file, maxW, maxH, quality, cb){
 /* ============================================================
    VERSION — 版本号（每次更新代码时递增，显示在设置页与侧栏底部）
    ============================================================ */
-const APP_VERSION = "v1.6.0";
+const APP_VERSION = "v1.8.0";
+
+function seedDeveloperPlannerData(d){
+  if(d.__developerPlannerSeeded) return;
+  const todayDate=isoToday();
+  const addDays=(value,days)=>{ const date=new Date(`${value}T12:00:00`); date.setDate(date.getDate()+days); return localDateStr(date); };
+  const goalId="dev-goal-product-validation";
+  const milestoneId="dev-milestone-core-loop";
+  const deliverableId="dev-deliverable-planner-center";
+  const taskRows=[
+    {id:"dev-task-model",title:"确认目标与里程碑层级",priority:"P0",estimatedMinutes:35,reason:"验证计划中心的层级关系",status:"completed",done:true,dueDate:todayDate,executionResult:{actualStart:`${todayDate}T08:30`,actualEnd:`${todayDate}T09:15`,actualMinutes:45,result:"已确认目标、里程碑和交付物关系",nextStep:"继续验证今日执行"}},
+    {id:"dev-task-execution",title:"验证今日执行状态更新",priority:"P0",estimatedMinutes:45,reason:"验证执行闭环",status:"in_progress",done:false,dueDate:todayDate},
+    {id:"dev-task-blocked",title:"补齐外部数据并更新报告",priority:"P1",estimatedMinutes:60,reason:"验证延期与阻塞处理",status:"deferred",done:false,dueDate:addDays(todayDate,-1),delayReason:"external_blocker",delayReasonLabel:"外部阻塞",delayNote:"等待测试数据返回后继续",delayedAt:`${todayDate}T10:00:00`},
+    {id:"dev-task-review",title:"记录本轮测试结论",priority:"P1",estimatedMinutes:30,reason:"验证执行结果和复盘字段",status:"pending",done:false,dueDate:addDays(todayDate,1)}
+  ];
+  const blocks=[
+    {id:"dev-block-model",title:"确认目标与里程碑层级",date:todayDate,startTime:"08:30",endTime:"09:05",relatedModule:"todo",relatedItemId:"dev-task-model",plannerGoalId:goalId,plannerTaskId:"dev-task-model",goalId,milestoneId,deliverableId,status:"completed",locked:true,manual:true,color:"#5588bb",note:"开发者默认测试数据：锁定时间块"},
+    {id:"dev-block-execution",title:"验证今日执行状态更新",date:todayDate,startTime:"10:00",endTime:"10:45",relatedModule:"todo",relatedItemId:"dev-task-execution",plannerGoalId:goalId,plannerTaskId:"dev-task-execution",goalId,milestoneId,deliverableId,status:"in_progress",color:"#8070b0",note:"开发者默认测试数据：当前行动"},
+    {id:"dev-block-review",title:"记录本轮测试结论",date:addDays(todayDate,1),startTime:"19:00",endTime:"19:30",relatedModule:"todo",relatedItemId:"dev-task-review",plannerGoalId:goalId,plannerTaskId:"dev-task-review",goalId,milestoneId,deliverableId,status:"pending",manual:true,color:"#a87020",note:"开发者默认测试数据：用户调整时间块"}
+  ];
+  taskRows.forEach(task=>{ task.plannerGoalId=goalId; task.goalId=goalId; task.milestoneId=milestoneId; task.deliverableId=deliverableId; task.scheduleBlockIds=blocks.filter(block=>block.relatedItemId===task.id).map(block=>block.id); });
+  const goal={id:goalId,title:"验证个人工作台计划中心",deadline:addDays(todayDate,7),current:"计划中心主体已完成，正在验证执行、延期和复盘闭环",status:"active",progress:25};
+  const milestone={id:milestoneId,goalId,title:"完成核心闭环验收",deadline:addDays(todayDate,7),status:"active",progress:25};
+  const deliverable={id:deliverableId,goalId,milestoneId,title:"计划中心可用性验证记录",dueDate:addDays(todayDate,7),status:"in_progress"};
+  const draft={id:"dev-draft-planner",mode:"professional",title:goal.title,deadline:goal.deadline,startDate:todayDate,current:goal.current,available:"2小时",availableMinutes:120,scope:"short_term",status:"applied",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),tasks:structuredClone(taskRows),scheduleBlocks:structuredClone(blocks),goal:structuredClone(goal),milestones:[structuredClone(milestone)],deliverables:[structuredClone(deliverable)],totalMinutes:170,capacityMinutes:960,availableDays:8,scheduledMinutes:110,remainingMinutes:60,conflicts:[],unscheduledTasks:["dev-task-blocked"],isFeasible:false,assumptions:["这是开发者默认测试数据，不代表真实用户数据"]};
+  d.todo=(d.todo||[]).concat(taskRows);
+  d.schedule=(d.schedule||[]).concat(blocks);
+  d.__planner={mode:"professional",goals:[{...structuredClone(goal),draft:structuredClone(draft)}],currentGoalId:goalId,goal:structuredClone(goal),milestones:[structuredClone(milestone)],deliverables:[structuredClone(deliverable)],draft,permissions:{readTasks:true,readSchedule:true,writeTasks:true,writeSchedule:true},snapshots:[]};
+  d.__developerPlannerSeeded=true;
+}
 
 const store = {
   load(){
     const raw = localStorage.getItem(CONFIG.storageKey);
     if(raw){ try { return JSON.parse(raw); } catch(e){} }
     const d={}; CONFIG.modules.forEach(m=>d[m.key]=structuredClone(m.seed||[]));
+    seedDeveloperPlannerData(d);
+    d.__onboarding = { seen:false, demoChoice:"pending" };
+    d.__isDemoData = true;
     d.__termStartDate = d.__termStartDate || "2026-08-31"; // Default term start date
     d.__greetImage = d.__greetImage || ""; // Greet background image (empty = no background)
   d.__avatar = d.__avatar || ""; // Avatar (empty = no avatar)
@@ -261,6 +300,76 @@ const store = {
 };
 let data = store.load();
 
+/* ---------- 开发运行日志：当前 PC 调试阶段使用 ---------- */
+const DEV_LOG_LIMIT = 500;
+function devLog(level, module, event, details = {}){
+  try{
+    data.__devLogs = Array.isArray(data.__devLogs) ? data.__devLogs : [];
+    data.__devLogs.push({
+      id:`log-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+      at:new Date().toISOString(),
+      level, module, event,
+      view:typeof view === "string" ? view : "",
+      details
+    });
+    if(data.__devLogs.length > DEV_LOG_LIMIT) data.__devLogs = data.__devLogs.slice(-DEV_LOG_LIMIT);
+    store.save();
+  }catch(e){ /* 日志不能反过来阻断主流程 */ }
+}
+function devLogValue(value){
+  try{ return typeof value === "string" ? value : JSON.stringify(value, null, 2); }
+  catch(e){ return String(value); }
+}
+function devLogAllText(logs = data.__devLogs || []){
+  return logs.map(log => [
+    `[${log.at}] [${log.level}] [${log.module}] ${log.event}`,
+    `页面：${log.view || "未知"}`,
+    devLogValue(log.details || {})
+  ].join("\\n")).join("\\n\\n");
+}
+function devLogDownload(filename, content, type = "text/plain;charset=utf-8"){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function devLogDiagnostics(logs = data.__devLogs || []){
+  const header=[
+    "【个人工作台开发诊断日志】",
+    `生成时间：${new Date().toISOString()}`,
+    `当前页面：${typeof view === "string" ? view : "未知"}`,
+    `日志数量：${logs.length}`,
+    ""
+  ].join("\\n");
+  return `${header}${devLogAllText(logs)}`;
+}
+function devLogsHTML(){
+  const logs=Array.isArray(data.__devLogs)?data.__devLogs.slice().reverse():[];
+  const levelLabel={info:"信息",warn:"提醒",error:"错误",fatal:"严重错误"};
+  const rows=logs.length?logs.map(log=>`<details class="dev-log-row dev-log-${log.level}">
+    <summary><span class="dev-log-level">${levelLabel[log.level]||log.level}</span><time>${esc(new Date(log.at).toLocaleString())}</time><b>${esc(log.module||"未知模块")}</b><span>${esc(log.event||"")}</span></summary>
+    <pre>${esc(devLogValue(log.details||{}))}</pre><div class="dev-log-meta">页面：${esc(log.view||"未知")} · ID：${esc(log.id||"")}</div>
+  </details>`).join(""):"<div class=\"dev-log-empty\">暂无运行日志。继续操作后，日志会自动出现在这里。</div>";
+  return `<div class="header"><div><h2>开发日志</h2><p>记录当前 PC 开发阶段的完整运行现场，方便反馈和修正。</p></div><div class="spacer"></div><span class="date-chip">${icon("activity",14)} ${logs.length} 条</span></div>
+    <div class="dev-log-toolbar"><button class="btn" id="dev-log-copy">复制诊断信息</button><button class="btn ghost" id="dev-log-export">导出 JSON</button><button class="btn ghost" id="dev-log-export-text">导出文字</button><button class="btn danger" id="dev-log-clear">清空日志</button></div>
+    <div class="dev-log-note">当前为开发调试模式：会记录操作、请求参数、完整响应、解析过程和错误详情。</div>
+    <section class="card dev-log-list">${rows}</section>`;
+}
+function renderDevLogs(){
+  $("#screen").innerHTML=devLogsHTML();
+  $("#dev-log-copy").onclick=async()=>{ try{ await navigator.clipboard.writeText(devLogDiagnostics()); toast("诊断日志已复制"); }catch(e){ devLog("error","开发日志","复制诊断信息失败",{message:e.message}); toast("复制失败，请导出文字日志"); } };
+  $("#dev-log-export").onclick=()=>{ devLogDownload(`workbench-dev-logs-${Date.now()}.json`,JSON.stringify(data.__devLogs||[],null,2),"application/json;charset=utf-8"); toast("日志 JSON 已导出"); };
+  $("#dev-log-export-text").onclick=()=>{ devLogDownload(`workbench-dev-logs-${Date.now()}.txt`,devLogDiagnostics()); toast("日志文字已导出"); };
+  $("#dev-log-clear").onclick=()=>{ if(!confirm("确定清空全部开发日志吗？")) return; data.__devLogs=[]; store.save(); renderDevLogs(); toast("开发日志已清空"); };
+}
+window.addEventListener("error", event => devLog("error", "JavaScript", "运行错误", {
+  message:event.message, source:event.filename, line:event.lineno, column:event.colno,
+  stack:event.error?.stack || ""
+}));
+window.addEventListener("unhandledrejection", event => devLog("error", "JavaScript", "未处理的异步错误", {
+  reason:devLogValue(event.reason), stack:event.reason?.stack || ""
+}));
+
 /* ---- GitHub Gist 云端同步 ---- */
 let syncState = { status:"idle", lastSync:null, error:null };
 let syncPushTimer = null;
@@ -271,6 +380,155 @@ let syncSignalProbing = false; // 信号探测防重入
 
 function getSyncConfig(){ return data.__sync || {}; }
 function setSyncConfig(cfg){ data.__sync = { ...getSyncConfig(), ...cfg }; store.save(); }
+function getAIConfig(){ return data.__aiConfig || {}; }
+function setAIConfig(cfg){ data.__aiConfig = { ...cfg }; store.save(); }
+const AI_BRIDGE_ENDPOINT="http://127.0.0.1:5174";
+function aiConfigHeaders(cfg){
+  const headers={"Content-Type":"application/json"};
+  if(cfg.apiKey) headers.Authorization=`Bearer ${cfg.apiKey}`;
+  return headers;
+}
+async function aiBridgeRequest(cfg,messages,requestOptions={}){
+  if(!cfg.endpoint) throw new Error("请填写接口地址");
+  if(!cfg.apiKey) throw new Error("请填写 API Key");
+  if(!cfg.model) throw new Error("请填写模型名称");
+  const started=Date.now();
+  devLog("info","AI 接口","请求开始",{config:cfg,messages,requestOptions});
+  const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),Number(cfg.timeout)||30000);
+  try{
+    const res=await fetch(`${AI_BRIDGE_ENDPOINT}/api/ai/chat`,{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({config:cfg,messages,requestOptions})});
+    const body=await res.json().catch(()=>({}));
+    devLog(res.ok&&body.ok!==false?"info":"error","AI 接口","请求返回",{status:res.status,elapsedMs:Date.now()-started,response:body.result||body,error:body.error||""});
+    if(!res.ok||body.ok===false) throw new Error(body.error||`本机中转层返回 HTTP ${res.status}`);
+    return body.result;
+  }catch(err){
+    devLog("error","AI 接口","请求失败",{message:err.message,name:err.name,elapsedMs:Date.now()-started});
+    throw err;
+  }finally{ clearTimeout(timer); }
+}
+async function testAIConnection(cfg){
+  return aiBridgeRequest(cfg,[{role:"user",content:"请只回复：连接测试成功"}]);
+}
+function aiWorkspacePayload(){
+  const copy=JSON.parse(JSON.stringify(data||{}));
+  delete copy.__aiConfig;
+  if(copy.__sync) delete copy.__sync.token;
+  return copy;
+}
+function aiResponseText(response){
+  const seen=new Set();
+  const read=(value,depth=0)=>{
+    if(value==null||depth>8) return "";
+    if(typeof value==="string") return value.trim();
+    if(typeof value!=="object"||seen.has(value)) return "";
+    seen.add(value);
+    if(Array.isArray(value)) return value.map(item=>read(item,depth+1)).filter(Boolean).join("\n").trim();
+    // 只把正式回答字段当成内容；推理字段必须留给诊断日志，不能参与业务解析。
+    const preferred=["content","text","value","output_text"];
+    for(const key of preferred){ const result=read(value[key],depth+1); if(result) return result; }
+    for(const key of ["message","output","choices","data","result"]){ const result=read(value[key],depth+1); if(result) return result; }
+    return "";
+  };
+  return read(response);
+}
+function aiResponseMeta(response){
+  const choice=response?.choices?.[0]||response?.result?.choices?.[0]||response?.output?.[0]||{};
+  const message=choice.message||{};
+  return {finishReason:choice.finish_reason||"",content:String(message.content||""),reasoningContent:String(message.reasoning_content||message.reasoning||"")};
+}
+function aiJsonCandidates(text){
+  const source=String(text||""); const out=[];
+  for(let start=0;start<source.length;start++){
+    if(source[start]!=="{") continue;
+    let depth=0, quoted=false, escaped=false;
+    for(let i=start;i<source.length;i++){
+      const ch=source[i];
+      if(quoted){ if(escaped) escaped=false; else if(ch==="\\") escaped=true; else if(ch==='"') quoted=false; continue; }
+      if(ch==='"'){ quoted=true; continue; }
+      if(ch==="{") depth++;
+      else if(ch==="}"){
+        depth--;
+        if(depth===0){ out.push(source.slice(start,i+1)); start=i; break; }
+      }
+    }
+  }
+  return out;
+}
+function aiCompactWorkspacePayload(){
+  const payload=aiWorkspacePayload();
+  const pick=(items,mapper)=>Array.isArray(items)?items.map(mapper):[];
+  return {
+    today:isoToday(),
+    planner:payload.__planner?{
+      mode:payload.__planner.mode||"simple",
+      goal:payload.__planner.goal?{id:payload.__planner.goal.id,title:payload.__planner.goal.title,deadline:payload.__planner.goal.deadline,progress:payload.__planner.goal.progress,status:payload.__planner.goal.status}:null,
+      draft:payload.__planner.draft?{title:payload.__planner.draft.title,deadline:payload.__planner.draft.deadline,scope:payload.__planner.draft.scope}:null
+    }:null,
+    tasks:pick(payload.todo,x=>({id:x.id,title:x.title,status:x.status||(x.done?"completed":"pending"),done:!!x.done,priority:x.priority,dueDate:x.dueDate||"",estimatedMinutes:x.estimatedMinutes||0,plannerGoalId:x.plannerGoalId||"",delayReason:x.delayReason||"",blockedBy:x.blockedBy||"",nextAction:x.nextAction||""})).slice(0,80),
+    schedule:pick(payload.schedule,x=>({id:x.id,title:x.title,date:x.date,startTime:x.startTime,endTime:x.endTime,status:x.status||"pending",plannerGoalId:x.plannerGoalId||"",relatedItemId:x.relatedItemId||"",locked:!!x.locked,manual:!!x.manual})).slice(0,120),
+    timetable:pick(payload.timetable,x=>({courseName:x.courseName||x.title,dayOfWeek:x.dayOfWeek,startTime:x.startTime,endTime:x.endTime,startWeek:x.startWeek,endWeek:x.endWeek,weekType:x.weekType})).slice(0,40),
+    projects:pick(payload.projects,x=>({id:x.id,title:x.title,status:x.projectStatus||x.status||"",dueDate:x.dueDate||"",priority:x.priority||""})).slice(0,40),
+    notes:pick(payload.note,x=>({id:x.id,title:x.title,content:String(x.content||"").slice(0,240),date:x.date||""})).slice(0,30)
+  };
+}
+function aiFinishReason(response){
+  return response?.choices?.[0]?.finish_reason || response?.result?.choices?.[0]?.finish_reason || response?.output?.[0]?.finish_reason || "";
+}
+function parseAIAnalysis(response){
+  const finishReason=aiFinishReason(response);
+  if(finishReason==="length") throw new Error("AI 输出达到长度上限，JSON 被截断");
+  const text=aiResponseText(response);
+  if(!text) throw new Error("接口已响应，但未识别到正式回答内容");
+  const cleaned=text.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
+  let parsed;
+  try{ parsed=JSON.parse(cleaned); }catch(e){
+    const match=cleaned.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error("AI 已返回文字，但不是可识别的 JSON 格式");
+    try{ parsed=JSON.parse(match[0]); }catch(err){ throw new Error("AI 已返回内容，但 JSON 格式不完整"); }
+  }
+  if(!parsed||typeof parsed!=="object") throw new Error("AI 返回结构无效");
+  const priorities=Array.isArray(parsed.priorities)?parsed.priorities:[];
+  const risks=Array.isArray(parsed.risks)?parsed.risks.map(String):[];
+  const suggestions=Array.isArray(parsed.suggestions)?parsed.suggestions.map(x=>typeof x==="string"?{title:x,reason:"AI 建议"}:{taskId:x.taskId,title:String(x.title||x.nextAction||"建议行动"),reason:String(x.reason||"AI 建议")}):[];
+  if(!String(parsed.summary||"").trim()&&!priorities.length&&!risks.length&&!suggestions.length) throw new Error("AI 返回了空分析结果");
+  const confidenceValue=Number(parsed.confidence);
+  return {summary:String(parsed.summary||"AI 已完成今日判断"),priorities:priorities.slice(0,5).map(x=>({taskId:x.taskId,title:String(x.title||"未命名任务"),level:String(x.level||"中"),reason:String(x.reason||"未提供判断原因"),nextAction:String(x.nextAction||"请确认下一步行动")})),risks:risks.slice(0,5),suggestions:suggestions.slice(0,5),confidence:Number.isFinite(confidenceValue)?Math.max(0,Math.min(1,confidenceValue)):0.5,generatedAt:new Date().toISOString(),source:"api"};
+}
+function parseAIPlan(response){
+  const finishReason=aiFinishReason(response);
+  if(finishReason==="length") throw new Error("AI 计划输出达到长度上限，JSON 被截断");
+  let text=aiResponseText(response);
+  let source="content";
+  // 部分推理模型在 finish_reason=stop 时把完整 JSON 放入 reasoning_content，正式 content 为空。
+  // 仅在内容完整、且能解析出 tasks 时兼容这种返回；截断响应绝不读取 reasoning_content。
+  if(!text&&finishReason==="stop"){
+    const meta=aiResponseMeta(response);
+    const candidate=aiJsonCandidates(meta.reasoningContent).reverse().find(x=>/\"tasks\"\s*:/i.test(x));
+    if(candidate){ text=candidate; source="reasoning-content-compatible"; }
+  }
+  if(!text) throw new Error("接口已响应，但未识别到计划内容");
+  const cleaned=text.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/i,"").trim();
+  let parsed;
+  try{ parsed=JSON.parse(cleaned); }catch(e){
+    const match=aiJsonCandidates(cleaned).reverse().find(x=>/\"tasks\"\s*:/i.test(x));
+    if(!match) throw new Error("AI 计划不是可识别的 JSON 格式");
+    try{ parsed=JSON.parse(match); }catch(err){ throw new Error("AI 计划 JSON 格式不完整"); }
+  }
+  const root=parsed?.plan&&typeof parsed.plan==="object"?parsed.plan:parsed;
+  const sourceTasks=Array.isArray(root.tasks)?root.tasks:[];
+  if(!sourceTasks.length) throw new Error("AI 没有生成可用任务");
+  const tasks=sourceTasks.slice(0,12).map((item,index)=>({
+    title:String(item.title||item.name||`AI 任务 ${index+1}`).trim().slice(0,120),
+    priority:["P0","P1","P2","P3"].includes(item.priority)?item.priority:"P1",
+    estimatedMinutes:Math.max(15,Math.min(720,Number(item.estimatedMinutes||item.minutes)||30)),
+    reason:String(item.reason||item.why||"根据当前目标和约束生成").trim().slice(0,160),
+    nextAction:String(item.nextAction||item.action||item.successCriteria||"").trim().slice(0,160),
+    successCriteria:String(item.successCriteria||item.doneWhen||"").trim().slice(0,180),
+    dependencies:Array.isArray(item.dependencies)?item.dependencies.map(String).slice(0,5):[]
+  })).filter(x=>x.title);
+  if(!tasks.length) throw new Error("AI 返回的任务均为空");
+  return {summary:String(root.summary||"AI 已生成计划"),tasks,assumptions:Array.isArray(root.assumptions)?root.assumptions.map(String).slice(0,8):[],questions:Array.isArray(root.questions)?root.questions.map(String).slice(0,8):[],milestoneTitle:String(root.milestoneTitle||root.milestone||"完成目标交付").slice(0,100),deliverableTitle:String(root.deliverableTitle||root.deliverable||"完成并提交最终成果").slice(0,100),confidence:Number.isFinite(Number(root.confidence))?Math.max(0,Math.min(1,Number(root.confidence))):0.7};
+}
 
 async function gistCreate(token, payload){
   const res = await fetch("https://api.github.com/gists", {
@@ -427,17 +685,102 @@ function updateStatusBar(){
 updateStatusBar();
 
 let view = "home";
-let timetableViewMode = "daily";
 let scheduleViewMode = "daily";
+let timetableViewMode = "daily";
 let scheduleWeekOffset = 0;   // 0=本周, -1=上周, 1=下周 …
 let scheduleMonthOffset = 0;  // 0=本月, -1=上月, 1=下月 …
 let scheduleSelectedDate = null; // null=今天, 或 "YYYY-MM-DD"
+let scheduleDayOffset = 0;
+let timetableSelectedDate = null; // null=今天, 或 "YYYY-MM-DD"
+let timetableWeekOffset = 0;
 let searchQ = "";
 let moneyMonth = null; // null=未初始化(默认本月), ""=全部, "YYYY-MM"=指定月
 let pomo = { running:false, remain:25*60, total:25*60 };   // 番茄钟状态（内存态，跨渲染保留）
 let clockTimer = null;                                       // 全局秒级心跳（时钟 + 番茄钟）
-function persist(){ data.__lastModified = new Date().toISOString(); store.save(); render(); scheduleSyncPush(); }
+function persist(){ data.__lastModified = new Date().toISOString(); store.save(); devLog("info","数据保存","工作台数据已保存",{lastModified:data.__lastModified}); render(); scheduleSyncPush(); }
 function pad2(n){ return String(n).padStart(2,"0"); }
+
+/* ---------- SHARED TIMELINE ---------- */
+const TIMELINE = { startHour: 0, endHour: 24, hourHeight: 64, dayHeaderHeight: 48 };
+const DAYGRID_TUNING_KEY = "personal-workbench-daygrid-tuning-v2";
+const DAYGRID_TUNING_DEFAULTS = { rowHeight: 50, labelWidth: 64, minuteWidth: 96, headerHeight: 40, minuteFont: 10, cornerFont: 11, labelFont: 11, eventTitleFont: 11, eventDetailFont: 9, eventSourceFont: 8, eventShortFont: 10, eventPadding: 4 };
+const DAYGRID_TUNING_LIMITS = {
+  rowHeight: [30, 70], labelWidth: [48, 180], minuteWidth: [40, 240], headerHeight: [28, 72], minuteFont: [8, 16], cornerFont: [8, 16],
+  labelFont: [8, 16], eventTitleFont: [8, 18], eventDetailFont: [7, 14], eventSourceFont: [7, 14], eventShortFont: [8, 18], eventPadding: [1, 10]
+};
+function dayGridTuning(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(DAYGRID_TUNING_KEY) || "{}");
+    return Object.fromEntries(Object.entries(DAYGRID_TUNING_DEFAULTS).map(([key, fallback]) => {
+      const [min] = DAYGRID_TUNING_LIMITS[key];
+      const value = Number(saved[key]);
+      return [key, Math.max(min, Number.isFinite(value) ? value : fallback)];
+    }));
+  } catch (_) {
+    return {...DAYGRID_TUNING_DEFAULTS};
+  }
+}
+function dayGridTuningStyle(){
+  const t = dayGridTuning();
+  return `--daygrid-row-height:${t.rowHeight}px;--daygrid-label-width:${t.labelWidth}px;--daygrid-minute-width:${t.minuteWidth}px;--daygrid-header-height:${t.headerHeight}px;--daygrid-minute-font:${t.minuteFont}px;--daygrid-corner-font:${t.cornerFont}px;--daygrid-label-font:${t.labelFont}px;--daygrid-event-title-font:${t.eventTitleFont}px;--daygrid-event-detail-font:${t.eventDetailFont}px;--daygrid-event-source-font:${t.eventSourceFont}px;--daygrid-event-short-font:${t.eventShortFont}px;--daygrid-event-padding:${t.eventPadding}px;`;
+}
+function bindDayGridTuning(){
+  const shell = document.querySelector(".daygrid-shell");
+  const controls = document.querySelector("#daygrid-tuning");
+  if (!shell || !controls) return;
+  const update = (commit = false) => {
+    const values = {};
+    Object.keys(DAYGRID_TUNING_DEFAULTS).forEach(key => {
+      const input = controls.querySelector(`[name='daygrid-${key}']`);
+      if (!input || input.value === "") return;
+      const [min] = DAYGRID_TUNING_LIMITS[key];
+      const raw = Number(input.value);
+      if (!Number.isFinite(raw)) return;
+      const value = Math.max(min, raw);
+      values[key] = value;
+      if (commit) input.value = value;
+      shell.style.setProperty(`--daygrid-${key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`)}`, `${value}px`);
+      const output = controls.querySelector(`[data-daygrid-${key}]`);
+      if (output) output.textContent = `${value}px`;
+    });
+    if (Object.keys(values).length) localStorage.setItem(DAYGRID_TUNING_KEY, JSON.stringify({...dayGridTuning(), ...values}));
+  };
+  controls.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", () => update(false));
+    input.addEventListener("change", () => update(true));
+  });
+  controls.querySelector("[data-daygrid-reset]").onclick = () => {
+    Object.keys(DAYGRID_TUNING_DEFAULTS).forEach(key => {
+      const input = controls.querySelector(`[name='daygrid-${key}']`);
+      if (input) input.value = DAYGRID_TUNING_DEFAULTS[key];
+    });
+    update();
+  };
+}
+function timelineMinutes(value, fallback = 0){
+  const parts = String(value || "").split(":").map(Number);
+  if (!Number.isFinite(parts[0])) return fallback;
+  return Math.max(0, Math.min(24 * 60, parts[0] * 60 + (Number.isFinite(parts[1]) ? parts[1] : 0)));
+}
+function timelineTop(value){ return (timelineMinutes(value) / 60) * TIMELINE.hourHeight; }
+function timelineHeight(start, end){
+  let s = timelineMinutes(start), e = timelineMinutes(end);
+  if (e <= s) e = 24 * 60;
+  return Math.max(24, ((e - s) / 60) * TIMELINE.hourHeight);
+}
+function timelineDateOffset(offset = 0){
+  const d = new Date(); d.setDate(d.getDate() + offset); return localDateStr(d);
+}
+function timelineDayLabel(dateValue){
+  const d = new Date(`${dateValue}T12:00:00`);
+  return ["周日","周一","周二","周三","周四","周五","周六"][d.getDay()];
+}
+function timelineLabels(offset = 0){
+  return Array.from({length: 25}, (_, hour) => `<div class="timeline-label" style="top:${offset + hour * TIMELINE.hourHeight}px">${pad2(hour)}:00</div>`).join("");
+}
+function timelineGridLines(){
+  return `<div class="timeline-grid-lines" style="height:${24 * TIMELINE.hourHeight}px"></div>`;
+}
 
 /* ---- toast 轻提示 ---- */
 function toast(msg){
@@ -483,6 +826,204 @@ function getCurrentTermWeekNumber() {
 }
 
 // 判断课程在当前周是否活跃
+function getTermWeekNumberForDate(dateValue) {
+  const target = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(target.getTime()) || !data.__termStartDate) return 1;
+  const termStart = new Date(`${data.__termStartDate}T12:00:00`);
+  if (Number.isNaN(termStart.getTime())) return 1;
+  const termStartMonday = new Date(termStart);
+  const dayOfWeek = termStart.getDay();
+  const offset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  termStartMonday.setDate(termStart.getDate() + offset);
+  termStartMonday.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  if (target < termStartMonday) return 1;
+  return Math.floor((target.getTime() - termStartMonday.getTime()) / (1000 * 60 * 60 * 24 * 7)) + 1;
+}
+
+function timetableEventForDate(item, dateValue) {
+  return {
+    ...item,
+    id: `course-${item.id}-${dateValue}`,
+    timetableId: item.id,
+    source: "timetable",
+    date: dateValue,
+    title: item.courseName || item.title || "课程",
+    startTime: item.startTime || "08:00",
+    endTime: item.endTime || "09:40",
+    color: item.color || "#6f9f84"
+  };
+}
+
+function scheduleEventsForDate(dateValue) {
+  const events = (data.schedule || []).filter(item => item.date === dateValue).map(item => ({...item, source: "schedule"}));
+  const weekday = plannerWeekday(dateValue);
+  const currentWeek = getTermWeekNumberForDate(dateValue);
+  (data.timetable || []).filter(item => item.dayOfWeek === weekday && isClassActiveInWeek(item, currentWeek))
+    .forEach(item => events.push(timetableEventForDate(item, dateValue)));
+  return events;
+}
+
+function timelineEventHTML(event, mode = "schedule"){
+  const color = event.color || (event.source === "timetable" ? "#6f9f84" : "#8f83a8");
+  const txt = contrastText(color);
+  const title = esc(event.title || event.courseName || "无标题");
+  const timeStr = `${esc(event.startTime || "00:00")}–${esc(event.endTime || "00:00")}`;
+  const sourceLabel = event.source === "timetable" ? "课程" : "日程";
+  return `<button class="timeline-event ${event.source === "timetable" ? "is-course" : "is-schedule"}" style="top:${timelineTop(event.startTime)}px;height:${timelineHeight(event.startTime, event.endTime)}px;background:${color};color:${txt}" data-timeline-id="${event.id}" aria-label="${title} ${timeStr}">
+    <span class="timeline-event-type">${sourceLabel}</span><strong>${title}</strong><small>${timeStr}</small>
+  </button>`;
+}
+function dayGridColorRGB(value){
+  const match = String(value || "").trim().match(/^#([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const hex = match[1];
+  return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+}
+function dayGridColorsNear(a, b){
+  const left = dayGridColorRGB(a), right = dayGridColorRGB(b);
+  if (!left || !right) return false;
+  const distance = Math.sqrt(left.reduce((sum, value, index) => sum + Math.pow(value - right[index], 2), 0));
+  return distance <= 72;
+}
+function dailyGridSegmentHTML(event, hour, segmentStart, segmentEnd, startTotal, endTotal, nearColor = false){
+  const color = event.color || (event.source === "timetable" ? "#6f9f84" : "#8f83a8");
+  const txt = contrastText(color);
+  const titleText = event.title || event.courseName || "无标题";
+  const timeText = `${event.startTime || "00:00"}–${event.endTime || "00:00"}`;
+  // 事件块位于当前小时行内，left 必须使用“小时内分钟”而不是全天绝对分钟。
+  const minuteOffset = Math.max(0, Math.min(60, segmentStart - hour * 60));
+  const segmentMinutesInHour = Math.max(0, Math.min(60, segmentEnd - segmentStart));
+  const left = (minuteOffset / 60) * 100;
+  const width = (segmentMinutesInHour / 60) * 100;
+  // 日网格以“小时”为纵向行、以“分钟”为横向列；事件时长只能影响横向宽度。
+  const top = 0;
+  const height = "100%";
+  // 所有事件统一保留来源、完整标题和完整时间，不因色块宽度而降级。
+  const isContinuation = segmentStart > startTotal;
+  const sourceLabel = event.source === "timetable" ? "课程" : "日程";
+  const fullLabel = `${sourceLabel}：${titleText}，${timeText}`;
+  const continuationClass = isContinuation ? " is-continuation" : "";
+  const nearColorClass = nearColor ? " is-near-color" : "";
+  const eventContent = `<span class="daygrid-event-source">${sourceLabel}</span><strong>${esc(titleText)}</strong><small>${esc(timeText)}</small>`;
+  return `<button class="daygrid-event ${event.source === "timetable" ? "is-course" : "is-schedule"}${continuationClass}${nearColorClass}" style="top:${top}px;height:${height};left:${left}%;width:${width}%;background:${color};color:${txt};--daygrid-event-color:${color}" data-timeline-id="${event.id}" data-tooltip="${attr(fullLabel)}" aria-label="${attr(fullLabel)}" title="${attr(fullLabel)}">
+    ${eventContent}
+  </button>`;
+}
+function dayGridProjectPanel(events, mode = "schedule"){
+  const uniqueEvents = Array.from(new Map(events.map(event => [String(event.id), event])).values());
+  const sourceLabel = mode === "timetable" ? "课程项目" : "日程项目";
+  const items = uniqueEvents.map(event => {
+    const color = event.color || (event.source === "timetable" ? "#6f9f84" : "#8f83a8");
+    const title = esc(event.title || event.courseName || "无标题");
+    const time = `${esc(event.startTime || "00:00")}–${esc(event.endTime || "00:00")}`;
+    const detail = esc(event.location || event.note || event.description || "");
+    return `<button class="daygrid-project-item" type="button" data-timeline-id="${event.id}" style="--project-color:${color}" title="${attr(`${title}，${time}`)}">
+      <span class="daygrid-project-dot" aria-hidden="true"></span><span class="daygrid-project-content"><strong>${title}</strong><small>${time}${detail ? ` · ${detail}` : ""}</small></span>
+    </button>`;
+  }).join("");
+  return `<aside class="daygrid-projects" aria-label="${sourceLabel}"><div class="daygrid-projects-head"><strong>${sourceLabel}</strong><span>${uniqueEvents.length} 项</span></div>${items || '<div class="daygrid-projects-empty">暂无安排</div>'}</aside>`;
+}
+function dayGridCourseRail(allClasses, recordItems = allClasses){
+  const m = modOf("timetable");
+  const records = recordItems.length ? recordItems.map(item => recHTML(m, item)).join("") : '<div class="daygrid-projects-empty">暂无匹配记录</div>';
+  return `<aside class="daygrid-course-rail" aria-label="课程信息">
+    <section class="daygrid-course-records"><div class="daygrid-course-records-head"><strong>课程记录</strong><span id="rec-count">${recordItems.length} 条</span></div><div class="rec-grid">${records}</div></section>
+    <div class="daygrid-course-stats">${sideStats(m, allClasses)}</div>
+  </aside>`;
+}
+function renderDailyMinuteGrid(dateValue, events, mode = "schedule", courseRail = ""){
+  const rows = Array.from({length: 24}, (_, hour) => {
+    const rowSegments = [];
+    events.forEach(event => {
+      const start = timelineMinutes(event.startTime);
+      let end = timelineMinutes(event.endTime);
+      if (end <= start) end = 24 * 60;
+      const hourStart = hour * 60;
+      const hourEnd = hourStart + 60;
+      const segmentStart = Math.max(start, hourStart);
+      const segmentEnd = Math.min(end, hourEnd);
+      if (segmentEnd > segmentStart) rowSegments.push({event, start, end, segmentStart, segmentEnd});
+    });
+    const segments = rowSegments.map(segment => {
+      const nearColor = rowSegments.some(other => {
+        if (other.event.id === segment.event.id || !dayGridColorsNear(segment.event.color, other.event.color)) return false;
+        return other.segmentStart <= segment.segmentEnd + 2 && other.segmentEnd >= segment.segmentStart - 2;
+      });
+      return dailyGridSegmentHTML(segment.event, hour, segment.segmentStart, segment.segmentEnd, segment.start, segment.end, nearColor);
+    });
+    const minuteCells = Array.from({length: 6}, () => "<div></div>").join("");
+    return `<div class="daygrid-hour-row"><div class="daygrid-minute-grid">${minuteCells}</div>${segments.join("")}</div>`;
+  }).join("");
+  return `<div class="daygrid-layout" data-timeline-mode="${mode}" style="${dayGridTuningStyle()}"><div class="daygrid-shell">
+    <div class="daygrid-corner">时间</div><div class="daygrid-header"><div class="daygrid-minute-head">${["00–10","10–20","20–30","30–40","40–50","50–60"].map(minuteRange => `<span>${minuteRange}</span>`).join("")}</div></div>
+    <div class="daygrid-labels">${Array.from({length: 24}, (_, hour) => `<div class="daygrid-label">${pad2(hour)}:00</div>`).join("")}</div>
+    <div class="daygrid-body">${rows || '<div class="timeline-empty">暂无安排</div>'}</div>
+  </div>${courseRail || dayGridProjectPanel(events, mode)}</div>`;
+}
+function renderTimelineDayView(dateValue, events, mode = "schedule", courseRail = ""){
+  const label = `${timelineDayLabel(dateValue)} ${dateValue}`;
+  return `<div class="timeline-toolbar">
+    <button class="btn sm" id="timeline-prev-day">${icon("chevron-left",14,2.4)} 前一天</button>
+    <span class="date-chip">${icon("calendar",14)} ${label}</span>
+    <button class="btn sm" id="timeline-next-day">后一天 ${icon("chevron-right",14,2.4)}</button>
+    <button class="btn sm" id="timeline-today">今天</button>
+  </div>
+  <div class="daygrid-title"><strong>${mode === "timetable" ? "课程日视图" : "日程日视图"}</strong><span>24 小时 × 6 个十分钟刻度；短色块悬停或点击查看完整信息</span></div>
+  ${renderDailyMinuteGrid(dateValue, events, mode, courseRail)}`;
+}
+function compactWeekEventHTML(event, hour, segmentStart, segmentEnd){
+  const color = event.color || (event.source === "timetable" ? "#6f9f84" : "#8f83a8");
+  const txt = contrastText(color);
+  const titleText = event.title || event.courseName || "无标题";
+  const timeText = `${event.startTime || "00:00"}–${event.endTime || "00:00"}`;
+  const width = ((segmentEnd - segmentStart) / 60) * 100;
+  const left = (segmentStart % 60) / 60 * 100;
+  const minutes = Math.max(1, segmentEnd - segmentStart);
+  const shortLabel = titleText.slice(0, 1) || "·";
+  const label = `${event.source === "timetable" ? "课程" : "日程"}：${titleText}，${timeText}`;
+  return `<button class="weekgrid-event${minutes < 18 || width < 20 ? " is-micro" : ""}" style="left:${left}%;width:${width}%;background:${color};color:${txt}" data-timeline-id="${event.id}" title="${attr(label)}" aria-label="${attr(label)}">
+    <strong>${esc(titleText)}</strong><span aria-hidden="true">${esc(shortLabel)}</span>
+  </button>`;
+}
+function compactWeekHourCell(events, hour){
+  const blocks = [];
+  events.forEach(event => {
+    const start = timelineMinutes(event.startTime);
+    let end = timelineMinutes(event.endTime);
+    if (end <= start) end = 24 * 60;
+    const hourStart = hour * 60;
+    const hourEnd = hourStart + 60;
+    const segmentStart = Math.max(start, hourStart);
+    const segmentEnd = Math.min(end, hourEnd);
+    if (segmentEnd > segmentStart) blocks.push(compactWeekEventHTML(event, hour, segmentStart, segmentEnd));
+  });
+  return `<div class="weekgrid-day-cell"><div class="weekgrid-minute-grid">${Array.from({length:6}, () => "<i></i>").join("")}</div>${blocks.join("")}</div>`;
+}
+function renderUnifiedWeeklyTimeline(weekDays, eventsForDate, mode = "schedule"){
+  const dayEvents = weekDays.map(day => eventsForDate(day.date));
+  const headers = weekDays.map(day => `<div class="weekgrid-day-header${day.date === isoToday() ? " is-today" : ""}"><span>${day.label}</span><b>${day.number}</b></div>`).join("");
+  const rows = Array.from({length:24}, (_, hour) => `<div class="weekgrid-row"><div class="weekgrid-hour">${pad2(hour)}:00</div>${dayEvents.map(events => compactWeekHourCell(events, hour)).join("")}</div>`).join("");
+  return `<div class="weekgrid-title"><strong>${mode === "timetable" ? "课程周视图" : "日程周视图"}</strong><span>一屏展示周一至周日；点击色块查看完整信息</span></div>
+  <div class="weekgrid-shell" data-timeline-mode="${mode}">
+    <div class="weekgrid-corner">小时</div><div class="weekgrid-headers">${headers}</div>
+    <div class="weekgrid-rows">${rows}</div>
+  </div>`;
+}
+function timelineWeekDates(offset = 0, baseDate = null){
+  const now = new Date(`${baseDate || isoToday()}T12:00:00`);
+  const dow = (now.getDay() + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow + offset * 7);
+  monday.setHours(12,0,0,0);
+  return Array.from({length:7}, (_,i) => { const d = new Date(monday); d.setDate(monday.getDate()+i); return {date:localDateStr(d), label:["周一","周二","周三","周四","周五","周六","周日"][i], number:d.getDate()}; });
+}
+function renderUnifiedScheduleWeek(){
+  const days = timelineWeekDates(scheduleWeekOffset, scheduleSelectedDate || isoToday());
+  const range = `${days[0].date} – ${days[6].date}`;
+  return `<div class="timeline-toolbar"><button class="btn sm" id="week-prev">${icon("chevron-left",14,2.4)} 上一周</button><span class="date-chip">${icon("calendar",14)} ${range}</span><button class="btn sm" id="week-next">下一周 ${icon("chevron-right",14,2.4)}</button><button class="btn sm" id="week-today">今天</button></div>${renderUnifiedWeeklyTimeline(days, date => scheduleEventsForDate(date), "schedule")}`;
+}
+
 function isClassActiveInWeek(classItem, currentWeek) {
   const start = parseInt(classItem.startWeek);
   const end = parseInt(classItem.endWeek);
@@ -590,6 +1131,368 @@ function trendSVG(series){
 function grp(zh,en){ return `<div class="sec-grp"><span class="bar"></span><span class="zh">${zh}</span><span class="en">${en}</span><span class="line"></span></div>`; }
 
 /* 今日聚焦：跨模块置顶任务（就地交互，不跳转） */
+/* ---------- PLAN CENTER: three-mode planning AI foundation ---------- */
+function plannerGoalList(){
+  const p=data.__planner||{};
+  const stored=Array.isArray(p.goals)?p.goals:[];
+  if(stored.length) return stored.filter(x=>x&&x.status!=="archived");
+  if(p.goal) return [{...p.goal,draft:p.draft||null}];
+  return [];
+}
+function plannerCurrentGoalId(){
+  const p=data.__planner||{};
+  return p.currentGoalId||p.goal?.id||plannerGoalList()[0]?.id||"";
+}
+function plannerSaveGoalRecord(d,status){
+  if(!d?.goal?.id) return;
+  const p=data.__planner||{};
+  const previous=plannerGoalList().filter(x=>String(x.id)!==String(d.goal.id));
+  const record={...d.goal,status:status||d.status||"active",progress:d.goal.progress||0,updatedAt:new Date().toISOString(),draft:structuredClone({...d,status:d.status||"draft"})};
+  data.__planner={...p,goals:[record,...previous],currentGoalId:d.goal.id,goal:d.goal,milestones:d.milestones,deliverables:d.deliverables};
+}
+function plannerState(){
+  const p=data.__planner||{};
+  const goals=plannerGoalList();
+  const currentId=p.currentGoalId||p.goal?.id||goals[0]?.id||"";
+  const current=goals.find(x=>String(x.id)===String(currentId));
+  return {
+    mode:p.mode||"simple",
+    goals,
+    currentGoalId:currentId,
+    draft:p.draft||current?.draft||null,
+    snapshots:Array.isArray(p.snapshots)?p.snapshots:[],
+    permissions:{
+      readTasks:p.permissions?.readTasks!==false,
+      readSchedule:p.permissions?.readSchedule!==false,
+      writeTasks:p.permissions?.writeTasks===true,
+      writeSchedule:p.permissions?.writeSchedule===true,
+      autoSecretary:p.permissions?.autoSecretary!==false,
+      writeCourses:p.permissions?.writeCourses===true,
+      writeFinance:p.permissions?.writeFinance===true,
+      writeNotes:p.permissions?.writeNotes===true,
+      deleteData:p.permissions?.deleteData===true
+    }
+  };
+}
+function plannerSelectGoal(id){
+  const p=data.__planner||{};
+  const goal=plannerGoalList().find(x=>String(x.id)===String(id));
+  if(!goal) return false;
+  data.__planner={...p,currentGoalId:goal.id,goal, milestones:goal.draft?.milestones||p.milestones||[],deliverables:goal.draft?.deliverables||p.deliverables||[],draft:goal.draft||null};
+  store.save();
+  renderPlanner();
+  return true;
+}
+function plannerArchiveGoal(id){
+  const p=data.__planner||{};
+  const goals=plannerGoalList().map(x=>String(x.id)===String(id)?{...x,status:"archived",archivedAt:new Date().toISOString()}:x);
+  const next=goals.find(x=>x.status!=="archived");
+  data.__planner={...p,goals,currentGoalId:next?.id||"",goal:next||null,draft:next?.draft||null};
+  store.save();
+  renderPlanner();
+}
+function plannerRecalculateDraft(d){
+  if(!d) return null;
+  const taskDrafts=(d.tasks||[]).map(t=>({...t,estimatedMinutes:Math.max(15,Number(t.estimatedMinutes)||30)}));
+  const protectedBlocks=(d.scheduleBlocks||[]).filter(b=>b&&!b.deleted&&(b.locked||b.manual)).map(b=>({...b,manual:!!b.manual,locked:!!b.locked}));
+  const schedule=plannerBuildSchedule(taskDrafts,d.startDate||isoToday(),d.deadline||"",d.availableMinutes||plannerParseMinutes(d.available||""),protectedBlocks);
+  const tasks=taskDrafts.map((t,index)=>({...d.tasks[index],estimatedMinutes:t.estimatedMinutes,dueDate:t.dueDate||d.deadline||"",scheduleBlockIds:schedule.blocks.filter(b=>b.taskIndex===index).map(b=>b.id)}));
+  schedule.blocks.forEach(b=>{ b.taskId=tasks[b.taskIndex]?.id||""; b.goalId=d.goal?.id||""; b.milestoneId=tasks[b.taskIndex]?.milestoneId||d.milestones?.[0]?.id||""; b.deliverableId=tasks[b.taskIndex]?.deliverableId||d.deliverables?.[0]?.id||""; b.status=tasks[b.taskIndex]?.status||"pending"; });
+  const totalMinutes=tasks.reduce((sum,t)=>sum+(Number(t.estimatedMinutes)||0),0);
+  const availableDays=d.deadline&&d.startDate<=d.deadline?Math.floor((new Date(`${d.deadline}T12:00:00`)-new Date(`${d.startDate}T12:00:00`))/86400000)+1:1;
+  const capacityMinutes=Math.max(0,availableDays*(d.availableMinutes||plannerParseMinutes(d.available||"")));
+  return {...d,tasks,scheduleBlocks:schedule.blocks,conflicts:schedule.conflicts,unscheduledTasks:schedule.unscheduledTasks,scheduledMinutes:schedule.scheduledMinutes,remainingMinutes:schedule.remainingMinutes,isFeasible:schedule.isFeasible,totalMinutes,capacityMinutes,availableDays,status:"draft",updatedAt:new Date().toISOString()};
+}
+function plannerUpdateDraftTask(index,field,value){
+  const p=data.__planner||{}; if(!p.draft?.tasks?.[index]) return;
+  const draft=structuredClone(p.draft); const task=draft.tasks[index];
+  if(field==="estimatedMinutes") task[field]=Math.max(15,Number(value)||15);
+  else if(field==="priority") task[field]=["P0","P1","P2","P3"].includes(value)?value:"P1";
+  else task[field]=String(value||"").trim();
+  const next=plannerRecalculateDraft(draft);
+  data.__planner={...data.__planner,draft:next};
+  plannerSaveGoalRecord(next,"active");
+  data.__planner.draft=next;
+  store.save();
+  renderPlanner();
+}
+function plannerHierarchyHTML(d){
+  if(!d) return "";
+  const goal=d.goal||{}; const milestone=d.milestones?.[0]||{}; const deliverable=d.deliverables?.[0]||{};
+  return `<div class="planner-hierarchy"><div class="planner-tree-node planner-tree-goal"><span>目标</span><b>${esc(goal.title||d.title||"未命名目标")}</b><small>${goal.progress||0}% · ${esc(goal.deadline||d.deadline||"未设置")}</small></div><div class="planner-tree-line"></div><div class="planner-tree-node"><span>里程碑</span><b>${esc(milestone.title||"未设置")}</b><small>${milestone.progress||0}% · ${esc(milestone.status||"pending")}</small></div><div class="planner-tree-line"></div><div class="planner-tree-node"><span>交付物</span><b>${esc(deliverable.title||"未设置")}</b><small>${esc(deliverable.dueDate||d.deadline||"未设置")} · ${esc(deliverable.status||"pending")}</small></div></div>`;
+}
+function plannerModeLabel(mode){ return mode==="professional"?"专业模式":mode==="smart"?"智能模式":"简易模式"; }
+function plannerUid(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
+function plannerParseMinutes(value){
+  const text=String(value||"").trim().toLowerCase();
+  if(!text) return 120;
+  const hours=text.match(/(\\d+(?:\\.\\d+)?)\\s*(?:小时|小時|h|hr|hours?)/);
+  const minutes=text.match(/(\\d+)\\s*(?:分钟|分鐘|min|mins?)/);
+  if(hours) return Math.max(15,Math.round(Number(hours[1])*60));
+  if(minutes) return Math.max(15,Number(minutes[1]));
+  const numeric=Number(text.replace(/[^0-9.]/g,""));
+  return Number.isFinite(numeric)&&numeric>0?Math.max(15,Math.round(numeric*60)):120;
+}
+function plannerDateAdd(date,days){ const d=new Date(`${date}T12:00:00`); d.setDate(d.getDate()+days); return localDateStr(d); }
+function plannerWeekday(date){ return ["周日","周一","周二","周三","周四","周五","周六"][new Date(`${date}T12:00:00`).getDay()]; }
+function plannerTimeMinutes(value){ const m=String(value||"").match(/^(\\d{1,2}):(\\d{2})$/); return m?Number(m[1])*60+Number(m[2]):-1; }
+function plannerTimeText(minutes){ const m=Math.max(0,Math.min(23*60+59,minutes)); return `${pad2(Math.floor(m/60))}:${pad2(m%60)}`; }
+function plannerExistingBlocks(date){
+  const blocks=(data.schedule||[]).filter(x=>x.date===date).map(x=>({start:plannerTimeMinutes(x.startTime),end:plannerTimeMinutes(x.endTime),title:x.title||"已有日程",source:"日程"}));
+  const weekday=plannerWeekday(date);
+  const currentWeek=getTermWeekNumberForDate(date);
+  (data.timetable||[]).filter(x=>x.dayOfWeek===weekday&&isClassActiveInWeek(x,currentWeek)).forEach(x=>blocks.push({start:plannerTimeMinutes(x.startTime),end:plannerTimeMinutes(x.endTime),title:x.courseName||x.title||"课程",source:"课程"}));
+  return blocks.filter(x=>x.start>=0&&x.end>x.start);
+}
+function plannerBuildSchedule(tasks,startDate,deadline,availableMinutes,protectedBlocks=[]){
+  const blocks=protectedBlocks.filter(b=>b.date&&plannerTimeMinutes(b.startTime)>=0&&plannerTimeMinutes(b.endTime)>plannerTimeMinutes(b.startTime)).map(b=>({...b})); const conflicts=[]; const dayMinutes=Math.max(15,availableMinutes||120);
+  let taskIndex=0, cursorDate=startDate, days=0;
+  while(taskIndex<tasks.length && days<370){
+    if(deadline && cursorDate>deadline) break;
+    const existing=plannerExistingBlocks(cursorDate).concat(blocks.filter(x=>x.date===cursorDate).map(x=>({start:plannerTimeMinutes(x.startTime),end:plannerTimeMinutes(x.endTime),title:x.title||"锁定时间块",source:x.locked?"锁定时间块":"手动时间块"})));
+    let used=0;
+    // 先使用晚间 19:00 后的可用窗口，并在课程/既有日程后顺延。
+    let cursor=19*60;
+    for(let guard=0;guard<48&&used<dayMinutes&&taskIndex<tasks.length;guard++){
+      const task=tasks[taskIndex]; const remaining=task.estimatedMinutes-(task._scheduled||0);
+      const chunk=Math.min(remaining,dayMinutes-used,60);
+      if(chunk<=0){ taskIndex++; continue; }
+      let start=cursor, end=start+chunk;
+      const hit=existing.find(x=>start<x.end&&end>x.start);
+      if(hit){ conflicts.push({date:cursorDate,task:task.title,with:hit.title,source:hit.source,type:"blocked-window"}); cursor=Math.max(cursor,hit.end); continue; }
+      if(end>23*60+59){ break; }
+      blocks.push({id:plannerUid("block"),date:cursorDate,startTime:plannerTimeText(start),endTime:plannerTimeText(end),title:task.title,taskIndex,estimatedMinutes:chunk});
+      task._scheduled=(task._scheduled||0)+chunk; used+=chunk; cursor=end+10;
+      if(task._scheduled>=task.estimatedMinutes){ task.dueDate=cursorDate; taskIndex++; }
+    }
+    cursorDate=plannerDateAdd(cursorDate,1); days++;
+  }
+  const unscheduledTasks=tasks.filter(t=>!(t._scheduled>=t.estimatedMinutes)).map(t=>({title:t.title,remainingMinutes:Math.max(0,t.estimatedMinutes-(t._scheduled||0)),taskIndex:tasks.indexOf(t)}));
+  const scheduledMinutes=tasks.reduce((sum,t)=>sum+Math.min(t.estimatedMinutes,t._scheduled||0),0);
+  tasks.forEach(t=>{ delete t._scheduled; });
+  return {blocks,conflicts,capacityDays:days,unscheduledTasks,scheduledMinutes,remainingMinutes:unscheduledTasks.reduce((sum,t)=>sum+t.remainingMinutes,0),isFeasible:unscheduledTasks.length===0};
+}
+function plannerActionLabel(action){
+  return {"generate-plan":"生成计划","generate-plan-local":"生成本地计划","generate-plan-fallback":"计划生成失败后兜底","apply-plan":"应用计划","execution-update":"更新执行状态","secretary-execute":"秘书开始执行","secretary-replan":"秘书局部重排","today-analysis":"完成今日分析","today-analysis-local":"生成本地今日判断","today-analysis-fallback":"今日分析失败后兜底","decision-accept":"采纳 AI 建议","decision-ignore":"忽略 AI 建议"}[action]||String(action||"AI 动作");
+}
+function plannerActionSummary(action, details={}){
+  const parts=[];
+  if(details.mode) parts.push(plannerModeLabel(details.mode));
+  if(details.source) parts.push(details.source==="api"?"真实 AI":details.source==="local-fallback"?"本地兜底":details.source==="local-rule"?"本地规则":details.source);
+  if(Number.isFinite(Number(details.taskCount))) parts.push(`${details.taskCount} 项任务`);
+  if(Number.isFinite(Number(details.scheduleCount))) parts.push(`${details.scheduleCount} 个时间块`);
+  if(Number.isFinite(Number(details.replannedBlocks))) parts.push(`重排 ${details.replannedBlocks} 块`);
+  if(details.title) parts.push(String(details.title));
+  if(details.status) parts.push(executionStatusLabel(details.status));
+  if(details.reason) parts.push(String(details.reason).slice(0,80));
+  return parts.join(" · ");
+}
+function plannerRecordAIAction(action, details={}){
+  const p=data.__planner||{};
+  const actions=Array.isArray(p.aiActions)?p.aiActions:[];
+  const at=new Date().toISOString();
+  const normalized={id:plannerUid("ai-action"),at,action,view,details:{...details}};
+  actions.unshift(normalized);
+  data.__planner={...p,aiActions:actions.slice(0,200),aiRuntime:{status:"idle",lastAction:action,lastActionLabel:plannerActionLabel(action),lastSummary:plannerActionSummary(action,details),lastAt:at,autoSecretary:plannerState().permissions.autoSecretary}};
+}
+function plannerSnapshot(reason){
+  const p=plannerState();
+  const snapshotData=structuredClone(data);
+  delete snapshotData.__planner;
+  const snap={id:Date.now(),createdAt:new Date().toISOString(),reason,data:snapshotData};
+  const list=[snap,...p.snapshots].slice(0,10);
+  data.__planner={...(data.__planner||{}),snapshots:list};
+  store.save();
+  return snap;
+}
+let plannerGenerateRequestSeq=0;
+let plannerGenerateInFlight=false;
+async function plannerAIGeneratePlanRaw(input){
+  const requestSeq=++plannerGenerateRequestSeq;
+  const cfg=getAIConfig();
+  if(!cfg.endpoint||!cfg.model){ plannerRecordAIAction("generate-plan-local",{mode:input.mode,source:"local-rule",reason:"未配置真实 AI",requestSeq}); return {plan:null,reason:"未配置真实 AI",requestSeq}; }
+  const modeLabels={simple:"简易模式",professional:"专业模式",smart:"智能模式"};
+  const workspace=aiCompactWorkspacePayload();
+  const prompt=`你是个人工作台的计划生成引擎。当前模式：${modeLabels[input.mode]||input.mode}。根据用户目标和精简工作台事实生成可执行计划。只输出最终 JSON，不要 Markdown、解释或思考过程。严格限制：最多 4 个任务；每个任务只写 title、priority、estimatedMinutes、reason、nextAction、successCriteria、dependencies；summary 不超过 50 字；reason、nextAction、successCriteria 各不超过 30 字；assumptions 最多 2 条；questions 最多 2 条。固定结构：{"summary":"简短摘要","milestoneTitle":"里程碑名称","deliverableTitle":"交付物名称","tasks":[{"title":"任务","priority":"P0","estimatedMinutes":30,"reason":"原因","nextAction":"下一步","successCriteria":"完成标准","dependencies":[]}],"assumptions":[],"questions":[],"confidence":0.0}。不要虚构事实；缺失信息放入 assumptions 或 questions。当前输入：${JSON.stringify({mode:input.mode,title:input.title,startDate:input.startDate,deadline:input.deadline,current:input.current,available:input.available,scope:input.scope,files:data.__planner?.files||[],workspace})}`;
+  const messages=[{role:"system",content:"你是严谨的个人工作台计划生成引擎，只返回最终 JSON。"},{role:"user",content:prompt}];
+  let response;
+  try{ response=await aiBridgeRequest(cfg,messages,{responseFormat:{type:"json_object"},maxTokens:1800}); }
+  catch(firstError){ devLog("warn","AI 计划生成","结构化请求失败，改用普通请求",{message:firstError.message}); response=await aiBridgeRequest(cfg,messages,{maxTokens:1800}); }
+  const plan=parseAIPlan(response);
+  plannerRecordAIAction("generate-plan",{mode:input.mode,source:"api",summary:plan.summary,taskCount:plan.tasks.length,confidence:plan.confidence,requestSeq});
+  devLog("info","AI 计划生成","计划解析成功",{mode:input.mode,summary:plan.summary,taskCount:plan.tasks.length,confidence:plan.confidence,requestSeq,responseMeta:aiResponseMeta(response)});
+  return {plan,requestSeq};
+}
+async function plannerAIGeneratePlan(input){
+  if(plannerGenerateInFlight) throw new Error("计划生成请求正在进行，请等待当前请求完成");
+  plannerGenerateInFlight=true;
+  try{ return await plannerAIGeneratePlanRaw(input); }
+  finally{ plannerGenerateInFlight=false; }
+}
+
+function plannerBuildDraft(input){
+  const title=(input.title||"").trim()||"未命名目标";
+  const deadline=input.deadline||"";
+  const current=(input.current||"").trim();
+  const available=(input.available||"").trim();
+  const mode=input.mode||"simple";
+  const startDate=input.startDate||isoToday();
+  const availableMinutes=plannerParseMinutes(available);
+  const aiTasks=Array.isArray(input.aiPlan?.tasks)?input.aiPlan.tasks:[];
+  const tasks=(aiTasks.length?aiTasks:[
+    {title:"确认最终交付清单",priority:"P0",estimatedMinutes:30,reason:"先明确完成标准，避免后续返工"},
+    {title:"整理现有材料并标记缺口",priority:"P0",estimatedMinutes:60,reason:"当前进度信息需要转化为可执行清单"},
+    {title:"完成主要成果初稿",priority:"P0",estimatedMinutes:120,reason:"先形成完整产出，再进行精修"},
+    {title:"校对、导出并提交",priority:"P0",estimatedMinutes:60,reason:"截止前保留检查和提交缓冲"}
+  ]).map(task=>({...task,estimatedMinutes:Math.max(15,Number(task.estimatedMinutes)||30),priority:["P0","P1","P2","P3"].includes(task.priority)?task.priority:"P1"}));
+  const schedule=plannerBuildSchedule(tasks,startDate,deadline,availableMinutes);
+  const totalMinutes=tasks.reduce((sum,t)=>sum+t.estimatedMinutes,0);
+  const availableDays=deadline&&startDate<=deadline?Math.floor((new Date(`${deadline}T12:00:00`)-new Date(`${startDate}T12:00:00`))/86400000)+1:1;
+  const capacityMinutes=Math.max(0,availableDays*availableMinutes);
+  const scope=input.scope||"long_term";
+  const goalId=plannerUid("goal");
+  const milestoneId=plannerUid("milestone");
+  const deliverableId=plannerUid("deliverable");
+  tasks.forEach((task,index)=>{ task.id=plannerUid("task"); task.goalId=goalId; task.milestoneId=milestoneId; task.deliverableId=deliverableId; task.taskIndex=index; task.status="pending"; task.dueDate=task.dueDate||deadline||""; task.scheduleBlockIds=schedule.blocks.filter(b=>b.taskIndex===index).map(b=>b.id); });
+  schedule.blocks.forEach(block=>{ block.taskId=tasks[block.taskIndex]?.id||""; block.goalId=goalId; block.milestoneId=tasks[block.taskIndex]?.milestoneId||milestoneId; block.deliverableId=tasks[block.taskIndex]?.deliverableId||deliverableId; block.status="pending"; });
+  const assumptions=[...(input.aiPlan?.assumptions||[])];
+  if(mode==="simple") assumptions.push("未提供正式通知或模板","未提供完整交付物清单","任务时长为初步估计");
+  if(input.aiPlan?.summary) assumptions.unshift(`AI 计划摘要：${input.aiPlan.summary}`);
+  if(capacityMinutes<totalMinutes) assumptions.push(`按每天 ${availableMinutes} 分钟计算，当前计划超出可用容量 ${totalMinutes-capacityMinutes} 分钟`);
+  if(schedule.conflicts.length) assumptions.push(`发现 ${schedule.conflicts.length} 个课程或已有日程阻塞窗口，系统已顺延安排`);
+  if(schedule.unscheduledTasks.length) assumptions.push(`截止日前仍有 ${schedule.remainingMinutes} 分钟任务未排入时间块`);
+  return {id:Date.now(),mode,title,deadline,current,available,startDate,scope,availableMinutes,totalMinutes,capacityMinutes,availableDays,createdAt:new Date().toISOString(),status:"draft",source:input.aiPlan?"ai":"local-rule",aiSummary:input.aiPlan?.summary||"",aiConfidence:input.aiPlan?.confidence??null,aiQuestions:input.aiPlan?.questions||[],assumptions,tasks,scheduleBlocks:schedule.blocks,conflicts:schedule.conflicts,unscheduledTasks:schedule.unscheduledTasks,scheduledMinutes:schedule.scheduledMinutes,remainingMinutes:schedule.remainingMinutes,isFeasible:schedule.isFeasible,goal:{id:goalId,title,deadline,current,status:"active",progress:0},milestones:[{id:milestoneId,goalId,title:input.aiPlan?.milestoneTitle||"完成目标交付",deadline,status:"pending",progress:0}],deliverables:[{id:deliverableId,goalId,milestoneId,title:input.aiPlan?.deliverableTitle||"完成并提交最终成果",status:"pending",dueDate:deadline||""}]};
+}
+function plannerUpdateDraftBlock(index, action, value){
+  const p=data.__planner||{}; if(!p.draft?.scheduleBlocks?.[index]) return;
+  const draft=structuredClone(p.draft); const block=draft.scheduleBlocks[index];
+  if(action==="delete"){ block.deleted=true; }
+  else if(action==="locked"){ block.locked=!block.locked; block.manual=true; }
+  else if(action==="date"){ block.date=value; block.manual=true; }
+  else if(action==="startTime"||action==="endTime"){ block[action]=value; block.manual=true; }
+  if(block.startTime&&block.endTime&&block.endTime<=block.startTime) return toast("结束时间必须晚于开始时间");
+  const next=plannerRecalculateDraft(draft); data.__planner={...data.__planner,draft:next}; plannerSaveGoalRecord(next,"active"); data.__planner.draft=next; store.save(); renderPlanner();
+}
+function plannerApplyDraft(){
+  const p=plannerState(); const d=p.draft;
+  if(!d) return toast("请先生成计划草案");
+  if(d.status==="applied") return toast("该计划草案已经应用，不能重复写入");
+  if(!p.permissions.writeTasks&&!p.permissions.writeSchedule) return toast("当前权限仅允许预览，请先开启写入任务或调整日程权限");
+  if(d.conflicts?.length&&!confirm(`发现 ${d.conflicts.length} 个时间冲突，仍然按预览写入吗？`)) return;
+  plannerSnapshot("应用计划草案前自动备份");
+  plannerRecordAIAction("apply-plan",{source:d.source||"local-rule",goalId:d.goal?.id||d.id,taskCount:d.tasks?.length||0,scheduleCount:d.scheduleBlocks?.length||0});
+  const taskIds={}; const blockIds={}; const now=Date.now();
+  d.tasks.forEach((t,i)=>{ taskIds[i]=plannerUid("task-record"); });
+  d.scheduleBlocks?.filter(b=>b&&!b.deleted).forEach((b,i)=>{ blockIds[b.id]=plannerUid("schedule"); });
+  if(p.permissions.writeTasks){
+    data.todo=data.todo||[];
+    d.tasks.forEach((t,i)=>data.todo.unshift({id:taskIds[i],title:t.title,priority:t.priority,done:false,status:t.status||"pending",note:`来源：${d.title}；预计 ${t.estimatedMinutes} 分钟；计划范围：${d.startDate||isoToday()} 至 ${d.deadline||"未设置"}`,plannerGoalId:d.goal?.id||d.id,plannerTaskId:t.id,goalId:d.goal?.id||d.id,milestoneId:t.milestoneId,deliverableId:t.deliverableId,planScope:d.scope,estimatedMinutes:t.estimatedMinutes,dueDate:t.dueDate||d.deadline||"",plannerReason:t.reason,scheduleBlockIds:t.scheduleBlockIds||[]}));
+  }
+  if(p.permissions.writeSchedule&&d.scheduleBlocks?.length){
+    data.schedule=data.schedule||[];
+    d.scheduleBlocks.filter(b=>b&&!b.deleted).forEach(b=>{ const scheduleId=blockIds[b.id]; const taskId=taskIds[b.taskIndex]; data.schedule.push({id:scheduleId,title:b.title,date:b.date,startTime:b.startTime,endTime:b.endTime,relatedModule:"todo",relatedItemId:taskId||"",color:"#8070b0",note:`来源：${d.title}；规划时间块`,plannerGoalId:d.goal?.id||d.id,plannerTaskId:d.tasks[b.taskIndex]?.id||"",goalId:d.goal?.id||d.id,milestoneId:d.tasks[b.taskIndex]?.milestoneId||"",deliverableId:d.tasks[b.taskIndex]?.deliverableId||"",planScope:d.scope,executionScope:"today",plannerBlockId:b.id,locked:!!b.locked,manual:!!b.manual});
+      if(p.permissions.writeTasks&&taskId){ const task=data.todo.find(x=>String(x.id)===String(taskId)); if(task){ task.scheduleBlockIds=task.scheduleBlockIds||[]; task.scheduleBlockIds.push(scheduleId); } }
+    });
+  }
+  data.__planner={...(data.__planner||{}),draft:{...d,status:"applied",appliedAt:new Date().toISOString(),taskRecordIds:Object.values(taskIds),scheduleRecordIds:Object.values(blockIds)},goal:d.goal,milestones:d.milestones,deliverables:d.deliverables};
+  persist();
+  const taskCount=p.permissions.writeTasks?d.tasks.length:0; const scheduleCount=p.permissions.writeSchedule?(d.scheduleBlocks||[]).length:0;
+  toast(`计划已写入 ${taskCount} 项任务、${scheduleCount} 个时间块`);
+}
+function plannerRefreshProgress(goalId){
+  const tasks=(data.todo||[]).filter(x=>String(x.plannerGoalId)===String(goalId));
+  if(!tasks.length) return;
+  const completed=tasks.filter(x=>x.status==="completed"||x.done).length;
+  const progress=Math.round(completed/tasks.length*100);
+  const p=data.__planner||{};
+  if(p.goal&&String(p.goal.id)===String(goalId)) p.goal={...p.goal,progress,status:progress>=100?"completed":"active"};
+  if(Array.isArray(p.milestones)) p.milestones=p.milestones.map(x=>String(x.goalId)===String(goalId)?{...x,progress,status:progress>=100?"completed":"active"}:x);
+  if(p.draft&&String(p.draft.goal?.id)===String(goalId)) p.draft={...p.draft,tasks:(p.draft.tasks||[]).map(t=>{ const item=tasks.find(x=>String(x.plannerTaskId)===String(t.id)); return item?{...t,status:item.status|| (item.done?"completed":"pending")} : t; })};
+  data.__planner=p;
+}
+function plannerDelayReasonLabel(reason){ return {time_insufficient:"时间不足",task_too_large:"任务过大",external_blocker:"外部阻塞",priority_change:"优先级变化",other:"其他"}[reason]||"未说明"; }
+function plannerTaskStatus(task,status,delayReason,delayNote){
+  const item=(data.todo||[]).find(x=>String(x.id)===String(task?.id)||String(x.plannerTaskId)===String(task?.plannerTaskId||task?.id));
+  if(!item) return false;
+  const next=["pending","in_progress","completed","deferred","cancelled"].includes(status)?status:"pending";
+  if(next==="deferred"){
+    item.delayReason=delayReason||item.delayReason||"other";
+    item.delayReasonLabel=plannerDelayReasonLabel(item.delayReason);
+    item.delayNote=String(delayNote||item.delayNote||"").trim();
+    item.delayedAt=new Date().toISOString();
+  } else if(next!=="deferred") { delete item.delayReason; delete item.delayReasonLabel; delete item.delayNote; }
+  item.status=next; item.done=next==="completed";
+  (data.schedule||[]).filter(x=>String(x.relatedItemId)===String(item.id)).forEach(block=>{ block.status=next; if(next==="completed"||next==="cancelled") block.executionNote=next==="completed"?"任务已完成":"任务已取消"; });
+  let replan=null;
+  if(item.plannerGoalId){ plannerRefreshProgress(item.plannerGoalId); if(plannerState().permissions.autoSecretary){ replan=plannerReplanRemaining(item.plannerGoalId); if(replan?.updated) plannerRecordAIAction("secretary-replan",{goalId:item.plannerGoalId,replannedBlocks:replan.updated,remainingMinutes:replan.remainingMinutes,triggerStatus:next}); } plannerRecordAIAction("execution-update",{taskId:item.id,title:item.title,status:next,replannedBlocks:replan?.updated||0,autoSecretary:plannerState().permissions.autoSecretary,delayReason:item.delayReason||""}); }
+  persist();
+  toast(next==="completed"?"任务已完成，后续计划已更新":next==="deferred"?`任务已延期（${item.delayReasonLabel}），已尝试重排剩余时间块`:next==="cancelled"?"任务已取消，已更新关联时间块":"任务状态已更新");
+  return {item,replan};
+}
+function plannerReplanRemaining(goalId){
+  const tasks=(data.todo||[]).filter(x=>String(x.plannerGoalId)===String(goalId)&&!["completed","cancelled"].includes(x.status|| (x.done?"completed":"pending")));
+  if(!tasks.length) return {blocks:[],updated:0};
+  const goal=(data.__planner?.goal&&String(data.__planner.goal.id)===String(goalId))?data.__planner.goal:null;
+  const taskDrafts=tasks.map((x,index)=>({title:x.title,estimatedMinutes:Math.max(15,+x.estimatedMinutes||30),taskIndex:index}));
+  const existing=(data.schedule||[]).filter(x=>String(x.plannerGoalId)===String(goalId)&&x.status!=="completed"&&x.status!=="cancelled");
+  const protectedBlocks=existing.filter(x=>x.locked||x.manual).map(x=>({...x,taskIndex:tasks.findIndex(t=>String(t.id)===String(x.plannerTaskId))}));
+  const schedule=plannerBuildSchedule(taskDrafts,isoToday(),goal?.deadline||"",Math.max(15,plannerParseMinutes(data.__planner?.draft?.available||"")),protectedBlocks);
+  let updated=0;
+  const movable=existing.filter(x=>!x.locked&&!x.manual);
+  schedule.blocks.filter(x=>!x.locked&&!x.manual).forEach((block,index)=>{ const target=movable[index]; if(!target) return; target.date=block.date; target.startTime=block.startTime; target.endTime=block.endTime; target.status="pending"; updated++; });
+  return {blocks:schedule.blocks,updated,remainingMinutes:schedule.remainingMinutes};
+}
+function plannerRestoreSnapshot(id){
+  const p=plannerState(); const snap=p.snapshots.find(x=>x.id==id); if(!snap) return toast("找不到备份");
+  if(!confirm(`恢复“${snap.reason}”的备份？当前数据会被替换。`)) return;
+  const keepPlanner=data.__planner; data=structuredClone(snap.data); data.__planner={...(data.__planner||{}),snapshots:p.snapshots,restoredAt:new Date().toISOString(),restoredFrom:id};
+  if(keepPlanner?.permissions) data.__planner.permissions=keepPlanner.permissions;
+  if(keepPlanner?.snapshots) data.__planner.snapshots=keepPlanner.snapshots;
+  persist(); toast("已恢复备份");
+}
+function renderPlanner(){
+  const p=plannerState(); const d=p.draft;
+  const modeCards=[
+    ["simple","简易模式","一句话 → 草案","信息少，默认只预览"],
+    ["professional","专业模式","材料 + 约束 → 计划","适合项目和正式交付"],
+    ["smart","智能模式","描述 → 追问 → 计划","AI 主动发现信息缺口"]
+  ].map(([k,n,s,desc])=>`<button class="planner-mode ${p.mode===k?"active":""}" data-planner-mode="${k}"><b>${n}</b><span>${s}</span><small>${desc}</small></button>`).join("");
+  const assumptionRows=d?.assumptions?.length?d.assumptions.map(x=>'<div>· '+esc(x)+'</div>').join(""):"";
+  const assumptions=d?.assumptions?.length?'<div class="planner-warning"><b>当前假设</b>'+assumptionRows+'</div>':"";
+  const taskRows=d?d.tasks.map((t,i)=>`<div class="planner-task"><span class="planner-task-index">${i+1}</span><div class="planner-task-main"><input class="planner-task-title" data-planner-task-field="title" data-planner-task-index="${i}" value="${attr(t.title||"")}" aria-label="任务名称"/><small>${esc(t.reason||"未填写原因")} · <input class="planner-task-minutes" type="number" min="15" step="15" data-planner-task-field="estimatedMinutes" data-planner-task-index="${i}" value="${Number(t.estimatedMinutes)||30}" aria-label="预计分钟数"/> 分钟 · ${t.status==="completed"?"已完成":t.status==="deferred"?"已延期":t.status==="cancelled"?"已取消":"待执行"}</small></div><select class="planner-task-priority" data-planner-task-field="priority" data-planner-task-index="${i}" aria-label="优先级"><option value="P0" ${t.priority==="P0"?"selected":""}>P0</option><option value="P1" ${t.priority==="P1"?"selected":""}>P1</option><option value="P2" ${t.priority==="P2"?"selected":""}>P2</option><option value="P3" ${t.priority==="P3"?"selected":""}>P3</option></select></div>`).join(""):"";
+  const scheduleRows=d?.scheduleBlocks?.filter(x=>!x.deleted).length?d.scheduleBlocks.map((x,i)=>x.deleted?"":`<div class="planner-schedule-row ${x.locked?"is-locked":""} ${x.manual?"is-manual":""}"><span><input type="date" value="${attr(x.date)}" data-planner-block-field="date" data-planner-block-index="${i}"/></span><b><input type="time" value="${attr(x.startTime)}" data-planner-block-field="startTime" data-planner-block-index="${i}" step="600"/> - <input type="time" value="${attr(x.endTime)}" data-planner-block-field="endTime" data-planner-block-index="${i}" step="600"/></b><span>${esc(x.title)} <small>${x.locked?"· 已锁定":x.manual?"· 用户调整":""}</small></span><span class="planner-block-actions"><button class="btn ghost sm" data-planner-block-action="locked" data-planner-block-index="${i}">${x.locked?"解锁":"锁定"}</button><button class="btn ghost sm" data-planner-block-action="delete" data-planner-block-index="${i}">删除</button></span></div>`).join(""):"<div class=\"planner-muted\">生成后显示建议时间块</div>";
+  const conflictRows=d?.conflicts?.length?`<div class="planner-warning"><b>时间冲突</b>${d.conflicts.map(x=>`<div>· ${esc(x.date)}：${esc(x.task)} 与 ${esc(x.with)}（${esc(x.source)}）重叠</div>`).join("")}</div>`:"";
+  const goalRows=p.goals.map(g=>`<div class="planner-goal-row ${String(g.id)===String(p.currentGoalId)?"active":""}"><button class="planner-goal-select" data-planner-select="${attr(String(g.id))}"><span class="planner-goal-dot"></span><span><b>${esc(g.title||"未命名目标")}</b><small>${g.progress||0}% · ${esc(g.deadline||"未设置")}</small></span></button><button class="planner-goal-archive" data-planner-archive="${attr(String(g.id))}" title="归档目标">归档</button></div>`).join("");
+  const sourceBadge=d?.source==="ai"?`<span class="planner-ai-badge">AI 生成 · 置信度 ${Math.round((d.aiConfidence??0)*100)}%</span>`:d?`<span class="planner-ai-badge is-local">本地规则草案</span>`:"";
+  const smartAnswers=Array.isArray(d?.smartAnswers)?d.smartAnswers:[];
+  const questionRows=d?.aiQuestions?.length?`<div class="planner-questions"><b>AI 仍需要确认</b>${d.aiQuestions.map((q,i)=>`<label><span>${esc(q)}</span><input type="text" data-planner-question-index="${i}" value="${attr(smartAnswers[i]||"")}" placeholder="填写后可让 AI 重新生成"/></label>`).join("")}<button class="btn ghost sm" id="planner-regenerate-answers">根据补充信息重新生成</button></div>`:"";
+  const draftHtml=d?`<div class="planner-draft"><div class="planner-draft-head"><div><span class="eyebrow">计划草案 · ${plannerModeLabel(d.mode)} · ${d.scope==="today"?"今日":d.scope==="short_term"?"近期":"长期"}</span><h3>${esc(d.title)}</h3></div><div class="planner-draft-badges">${sourceBadge}<span class="planner-status">${d.status==="applied"?"已写入":"待确认"}</span></div></div><p class="planner-ai-summary">${esc(d.aiSummary||"AI 已根据当前输入生成任务草案，请在写入前检查任务和时间块")}</p><div class="planner-meta"><span>范围：${esc(d.startDate||isoToday())} 至 ${esc(d.deadline||"未设置")}</span><span>容量：${d.capacityMinutes||0} / ${d.totalMinutes||0} 分钟</span><span>已排：${d.scheduledMinutes||0} 分钟</span><span>未排：${d.remainingMinutes||0} 分钟</span><span>任务：${d.tasks.length} 项</span></div>${questionRows}${assumptions}${conflictRows}${plannerHierarchyHTML(d)}<div class="planner-task-list">${taskRows}</div><div class="sec-title">建议时间块</div><div class="planner-schedule-list">${scheduleRows}</div><div class="planner-actions"><button class="btn" id="planner-apply" ${d.status==="applied"?"disabled":""}>先备份，再按权限写入</button><button class="btn ghost" id="planner-discard">清除草案</button></div></div>`:'<div class="planner-empty">输入一个目标后，计划草案会先出现在这里。当前版本不会自动修改任何数据。</div>';
+  const snaps=p.snapshots.slice(0,5).map(s=>`<div class="planner-snapshot"><div><b>${esc(s.reason)}</b><small>${new Date(s.createdAt).toLocaleString("zh-CN")}</small></div><button class="btn ghost sm" data-planner-restore="${s.id}">恢复</button></div>`).join("")||"<div class=\"planner-muted\">暂无特别备份</div>";
+  const aiActions=Array.isArray(data.__planner?.aiActions)?data.__planner.aiActions:[];
+  const aiRuntime=data.__planner?.aiRuntime||{};
+  const runtimeLabel=aiRuntime.lastActionLabel||"等待 AI 后台动作";
+  const runtimeSummary=aiRuntime.lastSummary||"生成计划、执行任务或分析今日后，AI 的动作会出现在这里";
+  const aiActionRows=aiActions.slice(0,8).map(a=>`<div class="planner-ai-action"><span>${esc(plannerActionLabel(a.action))}</span><small>${new Date(a.at).toLocaleString("zh-CN")} · ${esc(plannerActionSummary(a.action,a.details||{})||"已记录")}</small></div>`).join("")||"<div class=\"planner-muted\">AI 后台尚无动作记录</div>";
+  const fileRows=(data.__planner?.files||[]).map(f=>`<div class="planner-file">${icon("upload",13)} ${esc(f.name)} <small>${Math.round((f.size||0)/1024)} KB</small></div>`).join("");
+  $("#screen").innerHTML=`<div class="header"><div><h2>计划中心</h2><p>把长期目标拆到今天，但重要变更由你确认</p></div><div class="spacer"></div><span class="date-chip">${icon("calendar",14)} ${dateStr()}</span></div><div class="planner-layout"><section class="card planner-panel"><div class="sec-title" style="margin-top:0">我的目标</div><div class="planner-goals">${goalRows||'<div class="planner-muted">尚未建立目标，先填写下面的目标信息。</div>'}</div><div class="sec-title">选择规划模式</div><div class="planner-modes">${modeCards}</div><div class="sec-title">目标信息</div><div class="planner-fields"><div class="field"><label>长期目标</label><input id="planner-title" placeholder="例如：8月25日前完成三下乡项目" value="${attr(d?.title||"")}"/></div><div class="planner-row"><div class="field"><label>开始日期</label><input id="planner-start" type="date" value="${attr(d?.startDate||isoToday())}"/></div><div class="field"><label>截止时间</label><input id="planner-deadline" type="date" value="${attr(d?.deadline||"")}"/></div></div><div class="planner-row"><div class="field"><label>每天可用时间</label><input id="planner-available" placeholder="例如：每天2小时" value="${attr(d?.available||"")}"/></div><div class="field"><label>规划层级</label><select id="planner-scope"><option value="long_term" ${d?.scope==="long_term"?"selected":""}>长期目标 → 今日行动</option><option value="short_term" ${d?.scope==="short_term"?"selected":""}>近期/周计划</option><option value="today" ${d?.scope==="today"?"selected":""}>仅今日</option></select></div></div><div class="field"><label>目前进度 / 补充说明</label><textarea id="planner-current" rows="4" placeholder="已经完成什么？有哪些固定要求、材料或困难？">${esc(d?.current||"")}</textarea></div></div>${p.mode==="professional"?`<div class="sec-title">项目材料</div><div class="planner-upload"><label for="planner-files">上传通知、模板、进度、课表或证明材料</label><input id="planner-files" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,image/*"/><small>当前版本只记录本次会话的文件清单，不会伪装成已完成内容解析。</small><div id="planner-file-list">${fileRows}</div></div>`:p.mode==="smart"?`<div class="sec-title">智能追问预览</div><div class="planner-questions"><b>生成计划前，AI 将优先确认：</b><span>最终交付物和完成标准</span><span>固定安排与每天可用时间</span><span>通知、模板或评分标准</span><span>依赖他人的材料和节点</span></div>`:""}<div class="sec-title">本次会话权限</div><div class="planner-permissions"><label><input type="checkbox" id="planner-perm-tasks" ${p.permissions.writeTasks?"checked":""}/>允许写入新任务</label><label><input type="checkbox" id="planner-perm-schedule" ${p.permissions.writeSchedule?"checked":""}/>允许调整日程</label><label><input type="checkbox" id="planner-perm-auto" ${p.permissions.autoSecretary?"checked":""}/>允许 AI 秘书根据执行结果自动局部重排</label><span>默认不允许修改课程表、记账、日记或删除数据；重大方向仍由你决定</span></div><div class="planner-permission-note">${icon("shield",15)} 当前模式：${plannerModeLabel(p.mode)} · 写入任务：${p.permissions.writeTasks?"允许":"需确认"} · 写入日程：${p.permissions.writeSchedule?"允许":"禁止"}</div><div class="planner-secretary-actions"><button class="btn primary planner-generate" id="planner-generate">生成计划草案</button><button class="btn ghost" id="planner-secretary-pulse">让 AI 秘书巡检一次</button></div></section><section class="planner-results"><div class="sec-title" style="margin-top:0">计划预览</div>${draftHtml}<div class="card planner-backups"><div class="planner-draft-head"><div><h3>特别备份</h3><small>高影响变更前自动创建，也可随时恢复</small></div><button class="btn ghost sm" id="planner-backup-now">立即备份</button></div>${snaps}</div><div class="card planner-backups planner-runtime-card"><div class="planner-draft-head"><div><h3>AI 后台动作</h3><small>记录生成、应用、执行、重排和判断结果</small></div><span class="planner-status">${aiActions.length} 条</span></div><div class="planner-runtime-state"><b>${esc(runtimeLabel)}</b><span>${esc(runtimeSummary)}</span></div><div class="planner-ai-actions">${aiActionRows}</div></div></section></div>`;
+  $("#screen").querySelectorAll("[data-planner-mode]").forEach(el=>el.onclick=()=>{ data.__planner={...(data.__planner||{}),mode:el.dataset.plannerMode}; store.save(); renderPlanner(); });
+  $("#screen").querySelectorAll("[data-planner-select]").forEach(el=>el.onclick=()=>plannerSelectGoal(el.dataset.plannerSelect));
+  $("#screen").querySelectorAll("[data-planner-archive]").forEach(el=>el.onclick=()=>{ if(confirm("归档这个目标？其历史任务和时间块不会删除。")) plannerArchiveGoal(el.dataset.plannerArchive); });
+  $("#screen").querySelectorAll("[data-planner-task-field]").forEach(el=>el.onchange=()=>plannerUpdateDraftTask(Number(el.dataset.plannerTaskIndex),el.dataset.plannerTaskField,el.value));
+  $("#screen").querySelectorAll("[data-planner-block-field]").forEach(el=>el.onchange=()=>plannerUpdateDraftBlock(Number(el.dataset.plannerBlockIndex),el.dataset.plannerBlockField,el.value));
+  $("#screen").querySelectorAll("[data-planner-block-action]").forEach(el=>el.onclick=()=>plannerUpdateDraftBlock(Number(el.dataset.plannerBlockIndex),el.dataset.plannerBlockAction));
+  const fileInput=$("#planner-files");
+  if(fileInput){ fileInput.onchange=()=>{ const files=Array.from(fileInput.files||[]); data.__planner={...(data.__planner||{}),files:files.map(f=>({name:f.name,size:f.size,type:f.type,lastModified:f.lastModified}))}; store.save(); const list=$("#planner-file-list"); if(list) list.innerHTML=files.map(f=>`<div class="planner-file">${icon("upload",13)} ${esc(f.name)} <small>${Math.round(f.size/1024)} KB</small></div>`).join(""); toast(files.length?`已登记 ${files.length} 个材料文件，待生成计划时确认`:'已清空材料选择'); }; }
+  $("#planner-generate").onclick=async()=>{ const mode=plannerState().mode; const perms=plannerState().permissions; const input={mode,title:$("#planner-title").value,startDate:$("#planner-start").value,deadline:$("#planner-deadline").value,current:$("#planner-current").value,available:$("#planner-available").value,scope:$("#planner-scope").value}; const button=$("#planner-generate"); if(button){ button.disabled=true; button.textContent="AI 正在生成任务…"; } try{ const result=await plannerAIGeneratePlan(input); if(result.requestSeq!==plannerGenerateRequestSeq) return; const draft=plannerBuildDraft({...input,aiPlan:result.plan||null}); data.__planner={...(data.__planner||{}),permissions:{...perms,writeTasks:$("#planner-perm-tasks").checked,writeSchedule:$("#planner-perm-schedule").checked,autoSecretary:$("#planner-perm-auto").checked},draft,aiPlanLastRun:{at:new Date().toISOString(),mode,source:result.plan?"api":"local-rule",reason:result.reason||""}}; plannerSaveGoalRecord(draft,"active"); data.__planner.draft=draft; persist(); renderPlanner(); toast(result.plan?`AI 已生成 ${draft.tasks.length} 项任务，请核对计划`:`真实 AI 不可用，已生成本地计划草案`); }catch(err){ devLog("error","AI 计划生成","真实 AI 失败，使用本地规则草案",{message:err.message,name:err.name}); plannerRecordAIAction("generate-plan-fallback",{mode,source:"local-fallback",reason:err.message}); const draft=plannerBuildDraft(input); data.__planner={...(data.__planner||{}),permissions:{...perms,writeTasks:$("#planner-perm-tasks").checked,writeSchedule:$("#planner-perm-schedule").checked,autoSecretary:$("#planner-perm-auto").checked},draft,aiPlanLastRun:{at:new Date().toISOString(),mode,source:"local-fallback",reason:err.message}}; plannerSaveGoalRecord(draft,"active"); data.__planner.draft=draft; persist(); renderPlanner(); toast(`AI 计划生成失败，已使用本地草案：${err.message}`); } };
+  const apply=$("#planner-apply"); if(apply) apply.onclick=plannerApplyDraft;
+  const pulse=$("#planner-secretary-pulse"); if(pulse) pulse.onclick=plannerAISecretaryPulse;
+  const discard=$("#planner-discard"); if(discard) discard.onclick=()=>{ data.__planner={...(data.__planner||{}),draft:null}; store.save(); renderPlanner(); };
+  const regenerate=$("#planner-regenerate-answers");
+  if(regenerate) regenerate.onclick=()=>{ const answers=Array.from($("#screen").querySelectorAll("[data-planner-question-index]")).map(el=>String(el.value||"").trim()); const base={mode:p.mode,title:$("#planner-title").value,startDate:$("#planner-start").value,deadline:$("#planner-deadline").value,current:$("#planner-current").value,available:$("#planner-available").value,scope:$("#planner-scope").value}; base.current=[base.current,answers.filter(Boolean).map((x,i)=>`补充信息${i+1}：${x}`).join("；")].filter(Boolean).join("\n"); regenerate.disabled=true; regenerate.textContent="AI 正在根据补充信息重算…"; plannerAIGeneratePlan(base).then(result=>{ if(result.requestSeq!==plannerGenerateRequestSeq) return; const draft=plannerBuildDraft({...base,aiPlan:result.plan||null}); draft.smartAnswers=answers; data.__planner={...(data.__planner||{}),draft}; plannerSaveGoalRecord(draft,"active"); data.__planner.draft=draft; persist(); renderPlanner(); toast(result.plan?"已根据补充信息重新生成计划":"已生成本地补充计划"); }).catch(err=>{ regenerate.disabled=false; regenerate.textContent="根据补充信息重新生成"; toast(`重新生成失败：${err.message}`); }); };
+  $("#planner-backup-now").onclick=()=>{ plannerSnapshot("用户手动创建保护点"); renderPlanner(); toast("特别备份已创建"); };
+  $("#screen").querySelectorAll("[data-planner-restore]").forEach(el=>el.onclick=()=>plannerRestoreSnapshot(el.dataset.plannerRestore));
+}
+
 function focusTileHTML(){
   const pins=[]; CONFIG.modules.forEach(m=>(data[m.key]||[]).forEach(x=>{ if(x.pinned) pins.push({m,x}); }));
   const chk=icon("check",13,2.6);
@@ -640,14 +1543,235 @@ function timetableTileHTML(){
     content = `<div class="focus-empty">今天的课程已全部结束</div>`;
   }
 
-  return `<div class="tile b4"><div class="tile-h"><span class="tic">${icon("calendar-days",16)}</span><div class="tt"><span class="en">TODAY'S CLASSES</span><span class="zh">今日课程</span></div><span class="r js-open" data-open="timetable">查看全部</span></div>
+  return `<div class="tile b12"><div class="tile-h"><span class="tic">${icon("calendar-days",16)}</span><div class="tt"><span class="en">TODAY'S CLASSES</span><span class="zh">今日课程</span></div><span class="r js-open" data-open="timetable">查看全部</span></div>
     ${content}</div>`;
+}
+/* 今日执行面板：把计划时间块转换为可执行的当日队列 */
+function executionTasksForToday(){
+  const today=isoToday();
+  return (data.todo||[]).filter(x=>x.plannerGoalId&&!['completed','cancelled'].includes(x.status|| (x.done?'completed':'pending')) && (!x.dueDate||x.dueDate<=today));
+}
+function executionTodayBlocks(){
+  return scheduleEventsForDate(isoToday()).filter(x=>x.source==='schedule'&&x.plannerGoalId).sort((a,b)=>plannerTimeMinutes(a.startTime)-plannerTimeMinutes(b.startTime));
+}
+function executionStatusLabel(status){ return {pending:'待执行',in_progress:'进行中',completed:'已完成',deferred:'已延期',cancelled:'已取消'}[status]||'待执行'; }
+function executionStatusOptions(current){ return ['pending','in_progress','completed','deferred'].map(s=>`<option value="${s}" ${current===s?'selected':''}>${executionStatusLabel(s)}</option>`).join(''); }
+function executionDelayEditor(task){
+  if(!task||task.status!=="deferred") return '';
+  return `<div class="execution-delay-editor"><label>延期原因<select data-execution-delay-field="reason" data-execution-task-id="${attr(String(task.id))}"><option value="time_insufficient" ${task.delayReason==='time_insufficient'?'selected':''}>时间不足</option><option value="task_too_large" ${task.delayReason==='task_too_large'?'selected':''}>任务过大</option><option value="external_blocker" ${task.delayReason==='external_blocker'?'selected':''}>外部阻塞</option><option value="priority_change" ${task.delayReason==='priority_change'?'selected':''}>优先级变化</option><option value="other" ${!task.delayReason||task.delayReason==='other'?'selected':''}>其他</option></select></label><label>说明<textarea rows="2" data-execution-delay-field="note" data-execution-task-id="${attr(String(task.id))}" placeholder="记录延期原因和处理建议">${esc(task.delayNote||'')}</textarea></label></div>`;
+}
+function executionUpdateDelay(taskId,field,value){ const task=(data.todo||[]).find(x=>String(x.id)===String(taskId)); if(!task) return; if(field==='reason'){ task.delayReason=value; task.delayReasonLabel=plannerDelayReasonLabel(value); } else task.delayNote=String(value||'').trim(); task.delayedAt=task.delayedAt||new Date().toISOString(); persist(); renderExecution(); }
+function executionBlockTask(block){ return (data.todo||[]).find(t=>String(t.id)===String(block.relatedItemId)||String(t.plannerTaskId)===String(block.plannerTaskId)); }
+function executionUpdateResult(taskId,field,value){
+  const task=(data.todo||[]).find(x=>String(x.id)===String(taskId)); if(!task) return;
+  task.executionResult=task.executionResult||{}; task.executionResult[field]=field==='actualMinutes'?Math.max(0,Number(value)||0):String(value||'').trim(); task.executionUpdatedAt=new Date().toISOString();
+  if(field==='actualStart'&&task.executionResult.actualStart&&!task.executionResult.actualEnd){ task.executionResult.actualEnd=''; }
+  persist(); renderExecution();
+}
+function executionResultEditor(task){
+  if(!task) return '';
+  const r=task.executionResult||{};
+  return `<div class="execution-result-editor"><div class="execution-result-title">执行结果记录</div><div class="execution-result-fields"><label>实际开始<input type="datetime-local" data-execution-result="actualStart" data-execution-task-id="${attr(String(task.id))}" value="${attr(r.actualStart||'')}"/></label><label>实际完成<input type="datetime-local" data-execution-result="actualEnd" data-execution-task-id="${attr(String(task.id))}" value="${attr(r.actualEnd||'')}"/></label><label>实际用时<input type="number" min="0" step="5" placeholder="分钟" data-execution-result="actualMinutes" data-execution-task-id="${attr(String(task.id))}" value="${attr(r.actualMinutes??'')}"/></label></div><label class="execution-result-wide">完成结果<textarea rows="2" data-execution-result="result" data-execution-task-id="${attr(String(task.id))}" placeholder="完成了什么？产出了什么？">${esc(r.result||'')}</textarea></label><label class="execution-result-wide">问题与下一步<textarea rows="2" data-execution-result="nextStep" data-execution-task-id="${attr(String(task.id))}" placeholder="遇到什么问题？下一步准备做什么？">${esc(r.nextStep||'')}</textarea></label></div>`;
+}
+function plannerAITodayAnalysis(){
+  const today=isoToday();
+  const statusOf=t=>t.status||(t.done?'completed':'pending');
+  const tasks=(data.todo||[]).filter(t=>t.plannerGoalId&&!['completed','cancelled'].includes(statusOf(t)));
+  const blocks=executionTodayBlocks();
+  const priority={P0:30,P1:20,P2:10,P3:4};
+  const scored=tasks.map(t=>{
+    const reasons=[]; let score=priority[t.priority]||8;
+    if(t.dueDate&&t.dueDate<today){ score+=35; reasons.push(`已逾期（${t.dueDate}）`); }
+    else if(t.dueDate===today){ score+=28; reasons.push('今天截止'); }
+    if(statusOf(t)==='deferred'){ score+=12; reasons.push(`曾延期：${t.delayReasonLabel||plannerDelayReasonLabel(t.delayReason)}`); }
+    if(t.blockedBy||t.delayReason==='external_blocker'||statusOf(t)==='blocked'){ score+=10; reasons.push('存在外部阻塞'); }
+    const block=blocks.find(b=>String(b.relatedItemId)===String(t.id)||String(b.plannerTaskId)===String(t.plannerTaskId));
+    if(block&&plannerTimeMinutes(block.startTime)<=new Date().getHours()*60+new Date().getMinutes()&&plannerTimeMinutes(block.endTime)>new Date().getHours()*60+new Date().getMinutes()){ score+=8; reasons.push('当前时间块正在进行'); }
+    if(!reasons.length) reasons.push(t.priority?`优先级 ${t.priority}`:'属于当前规划任务');
+    return {taskId:t.id,title:t.title||'未命名任务',level:score>=45?'高':score>=25?'中':'低',score,reason:reasons.slice(0,2).join('；'),nextAction:t.nextAction||`开始：${t.title||'未命名任务'}`};
+  }).sort((a,b)=>b.score-a.score).slice(0,5);
+  const risks=[];
+  const overdue=tasks.filter(t=>t.dueDate&&t.dueDate<today);
+  const deferred=tasks.filter(t=>statusOf(t)==='deferred');
+  const blocked=tasks.filter(t=>t.blockedBy||t.delayReason==='external_blocker'||statusOf(t)==='blocked');
+  if(overdue.length) risks.push(`有 ${overdue.length} 项任务已逾期且尚未完成`);
+  if(deferred.length) risks.push(`有 ${deferred.length} 项任务处于延期状态`);
+  if(blocked.length) risks.push(`有 ${blocked.length} 项任务可能受到外部阻塞`);
+  const summary=scored[0]?`建议先处理“${scored[0].title}”，因为${scored[0].reason}`:'当前没有足够的未完成规划任务，适合先补充或确认今日计划';
+  return {summary,priorities:scored,risks,suggestions:scored.slice(0,3).map(x=>({taskId:x.taskId,title:x.nextAction,reason:x.reason})),confidence:0.62,generatedAt:new Date().toISOString(),source:'local-preview'};
+}
+let aiTodayRequestSeq=0;
+async function plannerAIAnalyzeToday(){
+  const requestSeq=++aiTodayRequestSeq;
+  const cfg=getAIConfig();
+  if(!cfg.endpoint||!cfg.model){
+    devLog("warn","AI 今日判断","未配置接口，使用本地判断",{hasEndpoint:Boolean(cfg.endpoint),hasModel:Boolean(cfg.model)});
+    const analysis=plannerAITodayAnalysis();
+    data.__planner={...(data.__planner||{}),aiToday:{analysis,decisions:data.__planner?.aiToday?.decisions||{}}};
+    plannerRecordAIAction("today-analysis-local",{source:analysis.source,taskCount:analysis.priorities?.length||0});
+    persist(); renderExecution(); toast('未配置真实 AI，已生成本地判断预览');
+    return;
+  }
+  const btn=$("#execution-ai-analyze"); if(btn){ btn.disabled=true; btn.textContent='正在分析…'; }
+  devLog("info","AI 今日判断","分析请求已登记",{requestSeq,viewAtStart:view});
+  try{
+    const prompt=`你是个人工作台的判断助手。只输出最终 JSON，不要 Markdown、解释或思考过程。严格限制：最多 3 条 priorities、3 条 risks、3 条 suggestions；每个 reason、nextAction、suggestion title 不超过 36 字；summary 不超过 60 字；confidence 必须是数字。若没有明确事项，数组可为空。结构：{"summary":"简短总结","priorities":[{"taskId":"任务ID","title":"任务标题","level":"高/中/低","reason":"判断原因","nextAction":"具体下一步"}],"risks":["风险"],"suggestions":[{"taskId":"任务ID","title":"建议","reason":"原因"}],"confidence":0.0}。你只能分析和提出建议，不能要求系统自动修改计划。以下是精简工作台数据：${JSON.stringify(aiCompactWorkspacePayload())}`;
+    const messages=[{role:"system",content:"你是严谨、可解释、只提供建议的个人计划判断助手。只输出最终合法 JSON，不要输出思考过程。"},{role:"user",content:prompt}];
+    let response;
+    try{
+      response=await aiBridgeRequest(cfg,messages,{responseFormat:{type:"json_object"},maxTokens:1800});
+    }catch(firstError){
+      devLog("warn","AI 今日判断","结构化请求失败，改用普通请求",{message:firstError.message});
+      response=await aiBridgeRequest(cfg,messages,{maxTokens:1800});
+    }
+    let analysis;
+    try{ analysis=parseAIAnalysis(response); devLog("info","AI 今日判断","首次响应解析成功",{analysis}); }
+    catch(parseError){
+      const meta=aiResponseMeta(response);
+      const rawText=aiResponseText(response);
+      const isTruncated=meta.finishReason==="length";
+      devLog("warn","AI 今日判断",isTruncated?"首次响应被截断，不再使用二次整理":"首次响应解析失败，准备二次整理",{message:parseError.message,finishReason:meta.finishReason,contentLength:meta.content.length,reasoningLength:meta.reasoningContent.length,rawText});
+      // 截断时正式 content 已经不完整，继续把它交给整理模型只会产生“伪成功”；直接进入本地兜底。
+      if(isTruncated||!rawText) throw parseError;
+      const repairPrompt=`请把下面这段完整的 AI 分析转换为严格 JSON。只做格式转换，不重新分析，不补充内容。只返回 JSON：{"summary":"不超过60字","priorities":[],"risks":[],"suggestions":[],"confidence":0.0}。原文：${rawText}`;
+      const repairMessages=[{role:"system",content:"你只负责格式转换，只输出最终 JSON，不要解释。"},{role:"user",content:repairPrompt}];
+      const repaired=await aiBridgeRequest(cfg,repairMessages,{responseFormat:{type:"json_object"},maxTokens:900}).catch(()=>aiBridgeRequest(cfg,repairMessages,{maxTokens:900}));
+      analysis=parseAIAnalysis(repaired);
+      if(!analysis.priorities.length&&!analysis.risks.length&&!analysis.suggestions.length&&analysis.confidence===0) throw new Error("二次整理返回空分析结果");
+      devLog("info","AI 今日判断","二次整理完成",{analysis});
+    }
+    if(requestSeq!==aiTodayRequestSeq) return;
+    analysis.source="api";
+    plannerRecordAIAction("today-analysis",{source:"api",taskCount:analysis.priorities?.length||0,confidence:analysis.confidence,requestSeq});
+    data.__planner={...(data.__planner||{}),aiToday:{analysis,decisions:data.__planner?.aiToday?.decisions||{}}};
+    persist(); renderExecution(); toast('已生成真实 AI 判断');
+  }catch(err){
+    if(requestSeq!==aiTodayRequestSeq) return;
+    devLog("error","AI 今日判断","接口失败后使用本地兜底",{message:err.message,name:err.name,requestSeq});
+    const analysis=plannerAITodayAnalysis(); analysis.source='local-fallback'; analysis.fallbackReason=err.message;
+    plannerRecordAIAction("today-analysis-fallback",{source:"local-fallback",reason:err.message,taskCount:analysis.priorities?.length||0});
+    data.__planner={...(data.__planner||{}),aiToday:{analysis,decisions:data.__planner?.aiToday?.decisions||{}}};
+    persist(); renderExecution(); toast(`AI 接口失败，已使用本地判断：${err.message}`);
+  }
+}
+function plannerAIDecide(taskId,decision){
+  const ai=data.__planner?.aiToday; if(!ai?.analysis) return;
+  data.__planner={...(data.__planner||{}),aiToday:{...ai,decisions:{...(ai.decisions||{}),[String(taskId)]:{decision,at:new Date().toISOString()}}}};
+  const action=decision==='accept'?"decision-accept":"decision-ignore";
+  plannerRecordAIAction(action,{taskId,decision});
+  devLog("info","AI 今日判断",decision==='accept'?"采纳建议":"忽略建议",{taskId,decision});
+  persist(); renderExecution(); toast(decision==='accept'?'已采纳这条判断（未修改计划）':'已忽略这条判断');
+}
+function plannerAIExecuteTask(taskId){
+  const task=(data.todo||[]).find(x=>String(x.id)===String(taskId)||String(x.plannerTaskId)===String(taskId));
+  if(!task) return toast("找不到对应任务");
+  const current=task.status||(task.done?"completed":"pending");
+  if(["completed","cancelled"].includes(current)) return toast("该任务已结束，无需再次开始");
+  task.status="in_progress"; task.done=false; task.executionStartedAt=task.executionStartedAt||new Date().toISOString();
+  const autoSecretary=plannerState().permissions.autoSecretary;
+  if(task.plannerGoalId&&autoSecretary) plannerReplanRemaining(task.plannerGoalId);
+  plannerRecordAIAction("secretary-execute",{taskId:task.id,title:task.title,previousStatus:current,status:"in_progress",autoSecretary});
+  persist(); renderExecution(); toast(`已开始执行：${task.title}`);
+}
+let plannerSecretaryRequestSeq=0;
+let plannerSecretaryInFlight=false;
+async function plannerAISecretaryPulse(){
+  if(plannerSecretaryInFlight) return toast("AI 后台巡检正在进行，请等待当前结果");
+  const tasks=(data.todo||[]).filter(x=>x.plannerGoalId&&!['completed','cancelled'].includes(x.status||(x.done?'completed':'pending')));
+  if(!tasks.length) return toast("当前没有可供 AI 秘书巡检的未完成任务");
+  plannerSecretaryInFlight=true;
+  const requestSeq=++plannerSecretaryRequestSeq;
+  const cfg=getAIConfig();
+  const runLocal=reason=>{
+    const local=plannerAITodayAnalysis();
+    const candidate=local.priorities?.[0];
+    const task=candidate&&tasks.find(x=>String(x.id)===String(candidate.taskId)||String(x.plannerTaskId)===String(candidate.taskId));
+    if(task&&plannerState().permissions.autoSecretary) plannerAIExecuteTask(task.id);
+    plannerRecordAIAction("secretary-pulse-local",{source:"local-rule",taskId:task?.id||"",title:task?.title||"",reason:reason||candidate?.reason||"本地巡检完成"});
+    persist(); renderPlanner();
+  };
+  try{
+    if(!cfg.endpoint||!cfg.model) return runLocal("未配置真实 AI");
+    const prompt=`你是个人工作台 AI 秘书后台。根据精简工作台事实，选择一个最适合现在推进的未完成任务。只输出 JSON，不要解释：{"taskId":"任务ID","action":"start|replan|wait","reason":"不超过60字"}。taskId 必须来自任务数据；不能虚构。当前数据：${JSON.stringify(aiCompactWorkspacePayload())}`;
+    const messages=[{role:"system",content:"你是个人工作台 AI 秘书，只返回最终合法 JSON。"},{role:"user",content:prompt}];
+    let response;
+    try{ response=await aiBridgeRequest(cfg,messages,{responseFormat:{type:"json_object"},maxTokens:900}); }
+    catch(firstError){ devLog("warn","AI 秘书后台","结构化巡检失败，改用普通请求",{message:firstError.message,requestSeq}); response=await aiBridgeRequest(cfg,messages,{maxTokens:900}); }
+    if(requestSeq!==plannerSecretaryRequestSeq) return;
+    const text=aiResponseText(response); const parsed=JSON.parse(text.replace(/^```(?:json)?\\s*/i,"").replace(/\\s*```$/i,"").trim());
+    const task=tasks.find(x=>String(x.id)===String(parsed.taskId)||String(x.plannerTaskId)===String(parsed.taskId));
+    if(!task) throw new Error("AI 秘书返回了不存在的任务");
+    const action=["start","replan","wait"].includes(parsed.action)?parsed.action:"wait";
+    if(action==="start"&&plannerState().permissions.autoSecretary) plannerAIExecuteTask(task.id);
+    if(action==="replan"&&plannerState().permissions.autoSecretary){ const replan=plannerReplanRemaining(task.plannerGoalId); plannerRecordAIAction("secretary-replan",{goalId:task.plannerGoalId,replannedBlocks:replan.updated,reason:parsed.reason||"AI 秘书巡检要求重排"}); }
+    plannerRecordAIAction("secretary-pulse",{source:"api",taskId:task.id,title:task.title,action,reason:String(parsed.reason||"AI 秘书已完成巡检"),requestSeq});
+    persist(); renderPlanner(); toast(action==="start"?`AI 秘书已开始：${task.title}`:action==="replan"?"AI 秘书已完成局部重排":"AI 秘书建议暂不动作");
+  }catch(err){
+    if(requestSeq!==plannerSecretaryRequestSeq) return;
+    devLog("error","AI 秘书后台","巡检失败，使用本地巡检",{message:err.message,name:err.name,requestSeq});
+    runLocal(`真实 AI 巡检失败：${err.message}`);
+  }finally{ plannerSecretaryInFlight=false; }
+}
+function executionAIHTML(){
+  const ai=data.__planner?.aiToday;
+  if(!ai?.analysis) return `<section class="card execution-ai"><div class="execution-ai-head"><div><span class="eyebrow">AI TODAY REVIEW</span><h3>AI 今日判断</h3><p>先分析现有事实，再由你决定是否采纳。不会自动修改任务或时间块。</p></div><button class="btn" id="execution-ai-analyze">分析今日</button></div><div class="execution-ai-empty">点击“分析今日”，查看优先级、风险和下一步建议。</div></section>`;
+  const analysis=ai.analysis; const decisions=ai.decisions||{};
+  const rows=(analysis.priorities||[]).map(item=>{ const decision=decisions[String(item.taskId)]?.decision; return `<div class="execution-ai-row"><div class="execution-ai-rank">${item.level}</div><div class="execution-ai-main"><b>${esc(item.title)}</b><small>${esc(item.reason)}</small><span>下一步：${esc(item.nextAction)}</span></div><div class="execution-ai-actions">${decision?`<em>${decision==='accept'?'已采纳':'已忽略'}</em>`:`<button class="btn ghost sm" data-ai-decision="accept" data-ai-task-id="${attr(String(item.taskId))}">采纳</button><button class="btn ghost sm" data-ai-decision="ignore" data-ai-task-id="${attr(String(item.taskId))}">忽略</button>`}<button class="btn ghost sm" data-ai-execute-task="${attr(String(item.taskId))}">开始执行</button></div></div>`; }).join('')||'<div class="execution-ai-empty">当前没有可判断的未完成规划任务。</div>';
+  const risks=analysis.risks?.length?`<div class="execution-ai-risks"><b>需要留意</b>${analysis.risks.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="execution-ai-risks is-clear"><b>风险概览</b><span>目前没有识别到明显执行风险。</span></div>';
+  const sourceLabel=analysis.source==='api'?'真实 AI 分析':analysis.source==='local-fallback'?'接口失败后本地兜底':'本地判断预览';
+  return `<section class="card execution-ai"><div class="execution-ai-head"><div><span class="eyebrow">AI TODAY REVIEW · ${esc(new Date(analysis.generatedAt).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}))}</span><h3>AI 今日秘书</h3><p>${esc(analysis.summary)}</p></div><button class="btn ghost" id="execution-ai-analyze">重新分析</button></div><div class="execution-ai-list">${rows}</div>${risks}<div class="execution-ai-note">本次来源：${sourceLabel}。当前采纳只记录你的决定；计划中心生成的任务仍由 AI 后台持续跟踪。${analysis.fallbackReason?` 兜底原因：${esc(analysis.fallbackReason)}`:''}</div></section>`;
+}
+function executionPanelHTML(){
+  const today=isoToday(), now=new Date(), currentMinutes=now.getHours()*60+now.getMinutes();
+  const blocks=executionTodayBlocks();
+  const activeBlock=blocks.find(x=>plannerTimeMinutes(x.startTime)<=currentMinutes&&currentMinutes<plannerTimeMinutes(x.endTime));
+  const nextBlock=blocks.find(x=>plannerTimeMinutes(x.startTime)>currentMinutes);
+  const tasks=executionTasksForToday();
+  const plannerTasks=(data.todo||[]).filter(x=>x.plannerGoalId);
+  const taskStatus=x=>x.status||(x.done?'completed':'pending');
+  const overdue=plannerTasks.filter(x=>x.dueDate&&x.dueDate<today&&!['completed','cancelled'].includes(taskStatus(x)));
+  const overdueCompleted=plannerTasks.filter(x=>x.dueDate&&x.dueDate<today&&['completed','cancelled'].includes(taskStatus(x)));
+  const deferred=plannerTasks.filter(x=>taskStatus(x)==='deferred');
+  const blocked=plannerTasks.filter(x=>!['completed','cancelled'].includes(taskStatus(x))&&(taskStatus(x)==='blocked'||x.blockedBy||x.delayReason==='external_blocker'));
+  const done=blocks.filter(b=>executionBlockTask(b)?.status==='completed'||b.status==='completed').length;
+  const queue=tasks.slice().sort((a,b)=>String(a.dueDate||'9999').localeCompare(String(b.dueDate||'9999'))).slice(0,8);
+  const blockRows=blocks.length?blocks.map(b=>{ const task=executionBlockTask(b); const status=task?.status||b.status||'pending'; return `<div class="execution-block ${activeBlock&&String(activeBlock.id)===String(b.id)?'is-current':''}"><div class="execution-block-time">${esc(b.startTime)}<small>${esc(b.endTime)}</small></div><div class="execution-block-main"><b>${esc(b.title||'未命名时间块')}</b><small>${task?`待办：${esc(task.title)}`:'规划时间块'}${b.locked?' · 已锁定':''}${b.manual?' · 用户调整':''}</small></div><select class="execution-status" data-execution-task="${attr(String(task?.id||''))}" data-execution-block="${attr(String(b.id||''))}">${executionStatusOptions(status)}</select>${task?`<details class="execution-result-details"><summary>记录结果</summary>${executionResultEditor(task)}</details>`:''}</div>`; }).join(''):'<div class="planner-muted">今天还没有已落地的规划时间块。</div>';
+  const taskRows=queue.length?queue.map(t=>`<div class="execution-task"><div class="execution-task-main"><b>${esc(t.title||'未命名待办')}</b><small>${t.dueDate?`截止 ${esc(t.dueDate)}`:'未设置截止日期'} · ${Number(t.estimatedMinutes)||0} 分钟${t.priority?` · ${esc(t.priority)}`:''}${t.status==='deferred'?` · 延期：${esc(t.delayReasonLabel||plannerDelayReasonLabel(t.delayReason))}`:''}</small>${executionDelayEditor(t)}</div><select class="execution-status" data-execution-task="${attr(String(t.id))}">${executionStatusOptions(t.status|| (t.done?'completed':'pending'))}</select></div>`).join(''):'<div class="planner-muted">今天没有待执行的规划待办。</div>';
+  const alertItems=[...overdue.map(t=>`<span>逾期未完成：${esc(t.title)} · ${esc(t.dueDate)}</span>`),...deferred.map(t=>`<span>主动延期：${esc(t.title)}</span>`),...blocked.filter(t=>!deferred.includes(t)).map(t=>`<span>外部阻塞：${esc(t.title)}</span>`),...(!overdue.length&&overdueCompleted.length?['<span>已逾期任务均已完成</span>']:[])];
+  const aiReview=MOBILE?"":executionAIHTML();
+  return `<div class="execution-panel"><div class="execution-hero"><div><span class="eyebrow">TODAY EXECUTION · ${esc(today)}</span><h2>今日执行</h2><p>${activeBlock?`当前时间块：${esc(activeBlock.title)}`:nextBlock?`下一步：${esc(nextBlock.title)}`:'今天暂无进行中的时间块'}</p></div><div class="execution-stats"><span><b>${blocks.length}</b><small>时间块</small></span><span><b>${done}/${blocks.length||0}</b><small>已完成</small></span><span><b>${overdue.length}</b><small>逾期未完成</small></span><span><b>${blocked.length}</b><small>阻塞</small></span></div></div>${aiReview}<div class="execution-grid"><section class="card execution-card"><div class="sec-title" style="margin-top:0">今日时间块</div>${blockRows}</section><section class="card execution-card"><div class="sec-title" style="margin-top:0">行动队列</div>${taskRows}</section></div><section class="card execution-alert"><div><b>执行异常</b><span>系统已根据截止日期和任务状态整理，具体处理建议可由 AI 分析后提供。</span></div><div class="execution-alert-items">${alertItems.length?alertItems.join(''):'<span>当前没有需要立即处理的异常</span>'}</div></section></div>`;
+}
+function renderExecution(){
+  $("#screen").innerHTML=`<div class="header"><div><h2>今日执行</h2><p>按时间块行动，记录状态，及时处理偏差</p></div><div class="spacer"></div><span class="date-chip">${icon('calendar',14)} ${dateStr()}</span></div>${executionPanelHTML()}`;
+  $("#screen").querySelectorAll('[data-execution-task]').forEach(el=>el.onchange=()=>{ const task=(data.todo||[]).find(x=>String(x.id)===String(el.dataset.executionTask)); if(task) plannerTaskStatus(task,el.value); else { const block=(data.schedule||[]).find(x=>String(x.id)===String(el.dataset.executionBlock)); if(block){ block.status=el.value; persist(); renderExecution(); } } });
+  $("#screen").querySelectorAll('[data-execution-result]').forEach(el=>el.onchange=()=>executionUpdateResult(el.dataset.executionTaskId,el.dataset.executionResult,el.value));
+  $("#screen").querySelectorAll('[data-execution-delay-field]').forEach(el=>el.onchange=()=>executionUpdateDelay(el.dataset.executionTaskId,el.dataset.executionDelayField,el.value));
+  const aiAnalyze=$("#execution-ai-analyze"); if(aiAnalyze) aiAnalyze.onclick=()=>{ plannerAIAnalyzeToday(); };
+  $("#screen").querySelectorAll('[data-ai-decision]').forEach(el=>el.onclick=()=>plannerAIDecide(el.dataset.aiTaskId,el.dataset.aiDecision));
+  $("#screen").querySelectorAll('[data-ai-execute-task]').forEach(el=>el.onclick=()=>plannerAIExecuteTask(el.dataset.aiExecuteTask));
+}
+/* 日程管理首页卡片 */
+function plannerNextAction(){
+  const candidates=(data.todo||[]).filter(x=>x.plannerGoalId&&x.status!=="completed"&&x.status!=="cancelled"&&!x.done);
+  if(!candidates.length) return null;
+  return candidates.slice().sort((a,b)=>{
+    const priority={P0:0,P1:1,P2:2,P3:3};
+    const pa=priority[a.priority]??9, pb=priority[b.priority]??9;
+    if(pa!==pb) return pa-pb;
+    return String(a.dueDate||"9999-12-31").localeCompare(String(b.dueDate||"9999-12-31"));
+  })[0];
+}
+function plannerNextActionTileHTML(){
+  const next=plannerNextAction();
+  if(!next) return `<div class="tile b4"><div class="tile-h"><span class="tic">${icon("target",16)}</span><div class="tt"><span class="en">NEXT PLANNED ACTION</span><span class="zh">规划下一步</span></div></div><div class="focus-empty">当前没有已落地的规划任务</div></div>`;
+  const reason=next.plannerReason||"按优先级和截止日期排序";
+  return `<div class="tile b4"><div class="tile-h"><span class="tic">${icon("target",16)}</span><div class="tt"><span class="en">NEXT PLANNED ACTION</span><span class="zh">规划下一步</span></div><span class="r">${esc(next.priority||"P1")}</span></div><div class="focus-list"><div class="focus-row js-pin-open" data-mkey="todo" data-id="${next.id}"><span class="fic" style="color:var(--accent)">${icon("arrow-right",16)}</span><div class="ft"><div class="fn">${esc(next.title)}</div><div class="fm">${esc(reason)} · ${next.estimatedMinutes||0} 分钟</div></div></div></div></div>`;
 }
 /* 日程管理首页卡片 */
 function scheduleTileHTML() {
     const m = modOf("schedule");
     const today = isoToday();
-    const todayEvents = (data.schedule || []).filter(item => item.date === today)
+    const todayEvents = scheduleEventsForDate(today)
         .sort((a, b) => {
             const timeA = a.startTime.split(':').map(Number);
             const timeB = b.startTime.split(':').map(Number);
@@ -657,25 +1781,25 @@ function scheduleTileHTML() {
 
     const now = new Date();
     const currentTime = now.getHours() * 60 + now.getMinutes();
-    const nextEvent = todayEvents.find(event => {
-        const [hour, minute] = event.startTime.split(':').map(Number);
-        return hour * 60 + minute > currentTime;
-    });
+    const currentEvent = todayEvents.find(event => plannerTimeMinutes(event.startTime)<=currentTime&&currentTime<plannerTimeMinutes(event.endTime));
+    const nextEvent = currentEvent || todayEvents.find(event => plannerTimeMinutes(event.startTime)>currentTime);
 
     let content;
     if (todayEvents.length === 0) {
         content = `<div class="focus-empty">今日无日程，去添加吧！</div>`;
     } else if (nextEvent) {
+        const eventLabel=currentEvent?`进行中：${nextEvent.title}`:`下一个：${nextEvent.title}`;
+        const remainingEvents=todayEvents.filter(event=>plannerTimeMinutes(event.endTime)>currentTime).length;
         content = `<div class="focus-list">
       <div class="focus-row js-open" data-open="schedule">
-        <span class="fic" style="color:${nextEvent.color || m.color}">${icon(m.icon, 16)}</span>
+        <span class="fic" style="color:${nextEvent.color || m.color}">${icon(nextEvent.source === "timetable" ? "calendar-days" : m.icon, 16)}</span>
         <div class="ft">
-          <div class="fn">下一个：${esc(nextEvent.title)}</div>
-          <div class="fm">${esc(nextEvent.startTime)} - ${esc(nextEvent.endTime)}</div>
+          <div class="fn">${esc(eventLabel)}</div>
+          <div class="fm">${esc(nextEvent.startTime)} - ${esc(nextEvent.endTime)}${nextEvent.source === "timetable" ? " · 课程" : ""}</div>
         </div>
         <span style="color:var(--text-tertiary)">${icon("chevron", 16, 2)}</span>
       </div>
-      <div class="focus-empty" style="padding-top:10px;">今日剩余 ${todayEvents.length - todayEvents.indexOf(nextEvent)} 个日程</div>
+      <div class="focus-empty" style="padding-top:10px;">今日剩余 ${remainingEvents} 个时间项</div>
     </div>`;
     } else {
         content = `<div class="focus-empty">今日日程已全部完成</div>`;
@@ -739,7 +1863,7 @@ function todoTileHTML(){
     return `<div class="tk-row"><div class="tk-chk js-pin-chk ${x.done?'on':''}" data-mkey="todo" data-id="${x.id}">${chk}</div>
       <span class="tk-name ${x.done?'done':''} js-pin-open" data-mkey="todo" data-id="${x.id}">${esc(x.title)}</span>
       ${p?`<span class="badge" style="background:${p.color};color:${p.text}"><span class="dot"></span>${p.label}</span>`:''}</div>`; }).join("")
-    : `<div class="focus-empty">还没有待办，去「今日计划」添加吧</div>`;
+    : `<div class="focus-empty">还没有待办，去「待办」添加吧</div>`;
   return `<div class="tile b5"><div class="tile-h"><span class="tic">${icon("list",16)}</span><div class="tt"><span class="en">TODO LIST</span><span class="zh">待办清单</span></div><span class="r js-open" data-open="todo">查看全部</span></div>
     <div class="tk-head"><span class="pct">${done}<span style="color:var(--text-secondary)">/${it.length}</span></span><span class="cnt">完成 ${pct}%</span><span class="bar"><i style="width:${pct}%"></i></span></div>
     <div class="tk-list">${list}</div></div>`;
@@ -845,6 +1969,35 @@ function healthTileHTML(){
     <div class="focus-list">${content}</div></div>`;
 }
 
+function onboardingCardHTML(){
+  const onboarding = data.__onboarding || {};
+  if(onboarding.seen === true) return "";
+  return `<div class="onboarding-card" id="onboarding-card">
+    <div class="onboarding-copy"><span class="eyebrow">首次使用</span><h3>先完成一个最短闭环</h3><p>从创建一个待办开始，完成后回到首页查看进度。演示数据只用于展示，可以保留，也可以切换到空白工作台。</p>
+      <div class="onboarding-steps"><span>1 创建待办</span><span>2 完成记录</span><span>3 查看进度</span></div></div>
+    <div class="onboarding-actions"><button class="btn" id="onboarding-keep">保留演示数据</button><button class="btn ghost" id="onboarding-blank">使用空白工作台</button></div>
+  </div>`;
+}
+function bindOnboarding(){
+  const card=$("#onboarding-card"); if(!card) return;
+  const finish=(blank)=>{
+    if(blank){
+      CONFIG.modules.forEach(m=>{ data[m.key]=[]; });
+      data.__isDemoData=false;
+      data.__onboarding={seen:true,demoChoice:"blank",completedAt:new Date().toISOString()};
+      persist();
+      toast("已切换为空白工作台");
+    } else {
+      data.__isDemoData=true;
+      data.__onboarding={seen:true,demoChoice:"keep",completedAt:new Date().toISOString()};
+      persist();
+      toast("已保留演示数据");
+    }
+  };
+  const keep=$("#onboarding-keep"), blank=$("#onboarding-blank");
+  if(keep) keep.onclick=()=>finish(false);
+  if(blank) blank.onclick=()=>{ if(confirm("使用空白工作台将清空当前演示记录，是否继续？")) finish(true); };
+}
 function renderHome(){
   const now = new Date();
   const dow = (now.getDay()+6)%7;
@@ -859,28 +2012,26 @@ function renderHome(){
       <div class="cmeta"><span>${dateStr()}</span><span class="dot"></span><span>第 ${weekNum()} 周</span></div></div></div>`;
 
   $("#screen").innerHTML = `
-    ${grp("今日节奏","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;RHYTHM")}
+    ${onboardingCardHTML()}
+    ${grp("今日行动","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;ACTION")}
     <div class="bento">
       ${clockCard}
       ${focusTileHTML()}
       ${quickTileHTML()}
-      ${timetableTileHTML()}
       ${scheduleTileHTML()}
-      ${overviewTileHTML()}
+      ${plannerNextActionTileHTML()}
     </div>
 
-    ${grp("习惯与待办","HABITS&nbsp;&nbsp;&&nbsp;&nbsp;TASKS")}
-    <div class="bento">${habitTileHTML()}${todoTileHTML()}</div>
+    ${grp("今日课程","TODAY&nbsp;&nbsp;·&nbsp;&nbsp;CLASSES")}
+    <div class="bento">${timetableTileHTML()}</div>
 
-    ${grp("专注与状态","FOCUS&nbsp;&nbsp;&&nbsp;&nbsp;MOOD")}
-    <div class="bento">${pomoTileHTML()}${trendTileHTML()}</div>
+    ${grp("打卡追踪","TRACKING&nbsp;&nbsp;·&nbsp;&nbsp;PROGRESS")}
+    <div class="bento">${overviewTileHTML()}${habitTileHTML()}${todoTileHTML()}${booksTileHTML()}${goalsTileHTML()}${healthTileHTML()}${spendTileHTML()}</div>
 
-    ${grp("收支与成长","MONEY&nbsp;&nbsp;&&nbsp;&nbsp;GROWTH")}
-    <div class="bento">${spendTileHTML()}${booksTileHTML()}${goalsTileHTML()}</div>
-
-    ${grp("健康生活","HEALTH&nbsp;&nbsp;&&nbsp;&nbsp;WELLNESS")}
-    <div class="bento">${healthTileHTML()}</div>`;
+    ${grp("内容记录","CONTENT&nbsp;&nbsp;·&nbsp;&nbsp;RECORDS")}
+    <div class="bento">${trendTileHTML()}${pomoTileHTML()}</div>`;
   wireHome();
+  bindOnboarding();
   startClock();
 }
 
@@ -911,6 +2062,23 @@ function wireHome(){
 }
 
 /* ---------- INSIGHT ---------- */
+function plannerReviewHTML(){
+  const p=plannerState(), goal=p.goals.find(g=>String(g.id)===String(p.currentGoalId));
+  if(!goal) return `<section class="card planner-review"><div class="sec-title" style="margin-top:0">规划复盘</div><div class="planner-muted">完成一个规划目标后，这里会汇总计划与实际执行偏差。</div></section>`;
+  const tasks=(data.todo||[]).filter(x=>String(x.plannerGoalId)===String(goal.id));
+  const total=tasks.length, completed=tasks.filter(x=>x.status==='completed'||x.done).length, deferred=tasks.filter(x=>x.status==='deferred').length;
+  const planned=tasks.reduce((n,x)=>n+(Number(x.estimatedMinutes)||0),0);
+  const actual=tasks.reduce((n,x)=>n+(Number(x.executionResult?.actualMinutes)||0),0);
+  const reasons={time_insufficient:0,task_too_large:0,external_blocker:0,priority_change:0,other:0};
+  tasks.filter(x=>x.status==='deferred').forEach(x=>{ reasons[x.delayReason||'other']=(reasons[x.delayReason||'other']||0)+1; });
+  const reasonRows=Object.entries(reasons).filter(([,n])=>n>0).map(([key,n])=>`<div class="review-reason"><span>${plannerDelayReasonLabel(key)}</span><i><em style="width:${deferred?Math.round(n/deferred*100):0}%"></em></i><b>${n}</b></div>`).join('')||'<div class="planner-muted">暂无延期记录</div>';
+  const suggestions=[];
+  if(deferred) suggestions.push('优先处理延期原因最多的任务，必要时缩小任务范围。');
+  if(planned&&actual&&actual>planned*1.2) suggestions.push('实际用时明显高于估计，下次将同类任务拆得更小并增加缓冲。');
+  if(completed===total&&total) suggestions.push('目标任务已全部完成，可以建立下一阶段目标或归档当前目标。');
+  if(!suggestions.length) suggestions.push('继续记录实际用时和执行结果，数据足够后会形成更可靠的复盘建议。');
+  return `<section class="card planner-review"><div class="planner-review-head"><div><div class="sec-title" style="margin-top:0">规划复盘</div><h3>${esc(goal.title||'当前目标')}</h3><small>目标进度 ${goal.progress||0}% · ${total} 项任务 · ${deferred} 次延期</small></div><span class="planner-review-badge">${completed}/${total} 完成</span></div><div class="review-metrics"><span><b>${planned}</b><small>计划分钟</small></span><span><b>${actual||'—'}</b><small>实际分钟</small></span><span><b>${actual&&planned?Math.round((actual/planned)*100)+'%':'—'}</b><small>用时偏差</small></span><span><b>${deferred}</b><small>延期次数</small></span></div><div class="review-columns"><div><div class="review-label">延期原因</div>${reasonRows}</div><div><div class="review-label">下一阶段建议</div><ul class="review-suggestions">${suggestions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
+}
 function renderInsight(){
   const cards=CONFIG.modules.map(m=>{ const it=data[m.key]||[]; let main="", pct=0;
     if(m.type==="todo"){ main=`${it.filter(x=>x.done).length}/${it.length} 已完成`; pct=it.length?Math.round(it.filter(x=>x.done).length/it.length*100):0; }
@@ -945,7 +2113,7 @@ function renderInsight(){
       ${['progress','todo','checkin','timetable','schedule'].includes(m.type)?`<div class="hero-bar" style="margin-top:9px"><i style="width:${pct}%;background:${m.color}"></i></div>`:''}</div>
       <span class="arw" style="color:var(--text-tertiary)">${icon("chevron",16,2)}</span></div>`; }).join("");
   $("#screen").innerHTML=`<div class="header"><div><h2>洞察</h2><p>各模块进展一览 · 记录—执行—统计—反馈</p></div><div class="spacer"></div><span class="date-chip">${icon("calendar",14)} ${dateStr()}</span></div>
-    <div class="sec-title">模块概况</div><div class="pin-list" style="grid-template-columns:repeat(3,1fr)">${cards}</div>`;
+    <div class="sec-title">模块概况</div><div class="pin-list" style="grid-template-columns:repeat(3,1fr)">${cards}</div>${plannerReviewHTML()}`;
   $("#screen").querySelectorAll("[data-open]").forEach(el=>el.onclick=()=>go(el.dataset.open));
 }
 
@@ -964,69 +2132,10 @@ function renderSchedule() {
   </div>`;
 
   if (scheduleViewMode === "daily") {
-    const today = scheduleSelectedDate || isoToday();
-
-    let timeLabelsHtml = '';
-    for (let h = 0; h < 24; h++) {
-      timeLabelsHtml += `<div class="time-label">${pad2(h)}:00</div>`;
-    }
-
-    // Split events into per-hour segments, positioned by minute columns (left/width %)
-    const todayEvents = (data.schedule || []).filter(item => item.date === today);
-    const hourRows = Array.from({length:24}, () => []);
-
-    todayEvents.forEach(event => {
-      const [sh, sm] = event.startTime.split(':').map(Number);
-      const [eh, em] = event.endTime.split(':').map(Number);
-      let startTotal = sh * 60 + sm;
-      let endTotal = eh * 60 + em;
-      if (endTotal <= startTotal) endTotal = 24 * 60; // clamp midnight-crossing
-      const color = event.color || '#8f83a8';
-      const txt = contrastText(color);
-      const title = esc(event.title || event.relatedModule || '无标题');
-      const timeStr = `${esc(event.startTime)} - ${esc(event.endTime)}`;
-
-      for (let h = sh; h < 24; h++) {
-        const hourStart = h * 60;
-        const hourEnd = hourStart + 60;
-        if (startTotal >= hourEnd || endTotal <= hourStart) continue;
-        const segStart = Math.max(0, startTotal - hourStart);
-        const segEnd = Math.min(60, endTotal - hourStart);
-        if (segEnd <= segStart) continue;
-        hourRows[h].push({
-          id: event.id,
-          left: (segStart / 60) * 100,
-          width: ((segEnd - segStart) / 60) * 100,
-          color, txt, title, timeStr,
-          isFirst: h === sh
-        });
-      }
-    });
-
-    const rowsHtml = hourRows.map((segs, h) => {
-      const segHtml = segs.map(s =>
-        `<div class="schedule-event${s.isFirst ? ' seg-first' : ''}" style="left:${s.left}%;width:${s.width}%;background-color:${s.color};color:${s.txt}" data-id="${s.id}">
-          <div class="schedule-event-title">${s.title}</div>
-          ${s.isFirst ? `<div class="schedule-event-time">${s.timeStr}</div>` : ''}
-        </div>`
-      ).join('');
-      return `<div class="schedule-hour-row" data-hour="${h}">
-        <div class="schedule-min-grid"><div></div><div></div><div></div><div></div><div></div><div></div></div>
-        ${segHtml}
-      </div>`;
-    }).join('');
-
-    content = `<div class="toolbar">
-      <div class="spacer"></div>
-      ${scheduleSelectedDate && scheduleSelectedDate !== isoToday() ? `<button class="btn sm" id="day-today">${icon("calendar",14)} 返回今天</button>` : ''}
-    </div>
-      <div class="sec-title">单日日程 · ${today}</div>
-      <div class="schedule-grid-container">
-        <div class="time-labels">${timeLabelsHtml}</div>
-        <div class="schedule-grid-v2">${rowsHtml}</div>
-      </div>`;
+    const selectedDate = scheduleSelectedDate || isoToday();
+    content = renderTimelineDayView(selectedDate, scheduleEventsForDate(selectedDate), "schedule");
   } else if (scheduleViewMode === "weekly") {
-    content = renderWeeklySchedule();
+    content = renderUnifiedScheduleWeek();
   } else if (scheduleViewMode === "monthly") {
     content = renderMonthlySchedule();
   }
@@ -1045,28 +2154,35 @@ function renderSchedule() {
 
   // Wire up view-specific listeners
   if (scheduleViewMode === "daily") {
-    const dayTodayBtn = $("#day-today");
-    if (dayTodayBtn) dayTodayBtn.onclick = () => { scheduleSelectedDate = null; render(); };
-    document.querySelectorAll('.schedule-event').forEach(eventEl => {
+    const prevDay = $("#timeline-prev-day"), nextDay = $("#timeline-next-day"), todayDay = $("#timeline-today");
+    if (prevDay) prevDay.onclick = () => { scheduleSelectedDate = shiftDate(scheduleSelectedDate || isoToday(), -1); render(); };
+    if (nextDay) nextDay.onclick = () => { scheduleSelectedDate = shiftDate(scheduleSelectedDate || isoToday(), 1); render(); };
+    if (todayDay) todayDay.onclick = () => { scheduleSelectedDate = null; scheduleDayOffset = 0; render(); };
+    bindDayGridTuning();
+    document.querySelectorAll('.timeline-event, .daygrid-event, .daygrid-project-item, .weekgrid-event').forEach(eventEl => {
       eventEl.onclick = (e) => {
         e.stopPropagation();
-        const eventId = eventEl.dataset.id;
-        const itemToEdit = (data.schedule || []).find(item => item.id == eventId);
-        if (itemToEdit) {
-          openEditor("schedule", itemToEdit);
-        }
+        const eventId = eventEl.dataset.timelineId;
+        const itemToEdit = (data.schedule || []).find(item => String(item.id) === String(eventId));
+        if (itemToEdit) return openEditor("schedule", itemToEdit);
+        const courseId = String(eventId).replace(/^course-/, "").split("-")[0];
+        const course = (data.timetable || []).find(item => String(item.id) === courseId);
+        if (course) openEditor("timetable", course);
       };
     });
   } else if (scheduleViewMode === "weekly") {
     $("#week-prev").onclick = () => { scheduleWeekOffset--; render(); };
     $("#week-next").onclick = () => { scheduleWeekOffset++; render(); };
     $("#week-today").onclick = () => { scheduleWeekOffset = 0; render(); };
-    document.querySelectorAll('.week-event').forEach(eventEl => {
+    document.querySelectorAll('.timeline-event, .daygrid-event, .weekgrid-event').forEach(eventEl => {
       eventEl.onclick = (e) => {
         e.stopPropagation();
-        const eventId = eventEl.dataset.id;
-        const itemToEdit = (data.schedule || []).find(item => item.id == eventId);
-        if (itemToEdit) openEditor("schedule", itemToEdit);
+        const eventId = eventEl.dataset.timelineId;
+        const itemToEdit = (data.schedule || []).find(item => String(item.id) === String(eventId));
+        if (itemToEdit) return openEditor("schedule", itemToEdit);
+        const courseId = String(eventId).replace(/^course-/, "").split("-")[0];
+        const course = (data.timetable || []).find(item => String(item.id) === courseId);
+        if (course) openEditor("timetable", course);
       };
     });
   } else if (scheduleViewMode === "monthly") {
@@ -1085,7 +2201,6 @@ function renderSchedule() {
 
 /* ---------- WEEKLY SCHEDULE VIEW ---------- */
 function renderWeeklySchedule() {
-  const allEvents = data.schedule || [];
   const now = new Date();
 
   // Calculate the Monday of the target week
@@ -1118,7 +2233,7 @@ function renderWeeklySchedule() {
   // Day columns
   let dayColumns = weekDays.map((day, idx) => {
     const ds = localDateStr(day);
-    const dayEvents = allEvents.filter(e => e.date === ds);
+    const dayEvents = scheduleEventsForDate(ds);
     const isToday = ds === todayStr;
 
     let eventsHtml = '';
@@ -1168,7 +2283,6 @@ function renderWeeklySchedule() {
 
 /* ---------- MONTHLY SCHEDULE VIEW ---------- */
 function renderMonthlySchedule() {
-  const allEvents = data.schedule || [];
   const now = new Date();
 
   // Calculate target month
@@ -1204,7 +2318,7 @@ function renderMonthlySchedule() {
 
   let cellsHtml = cells.map(cell => {
     const ds = localDateStr(cell.date);
-    const dayEvents = allEvents.filter(e => e.date === ds);
+    const dayEvents = scheduleEventsForDate(ds);
     const isToday = ds === todayStr;
 
     let dotsHtml = '';
@@ -1237,17 +2351,6 @@ function renderMonthlySchedule() {
 }
 
 /* ---------- MODULE VIEW ---------- */
-function renderTimetableWeekView(allClasses){
-  const days=["周一","周二","周三","周四","周五","周六","周日"];
-  const currentWeek=getCurrentTermWeekNumber();
-  const active=allClasses.filter(x=>isClassActiveInWeek(x,currentWeek));
-  const columns=days.map(day=>{
-    const items=active.filter(x=>x.dayOfWeek===day).sort((a,b)=>String(a.startTime).localeCompare(String(b.startTime)));
-    const rows=items.length?items.map(x=>`<div class="timetable-week-item" data-edit-timetable="${x.id}"><strong>${esc(x.courseName||x.title||"未命名课程")}</strong><span>${esc(x.startTime||"")} - ${esc(x.endTime||"")}</span><small>${esc(x.location||"未设置地点")}</small></div>`).join(""): `<div class="timetable-week-empty">暂无课程</div>`;
-    return `<div class="timetable-week-col"><div class="timetable-week-day">${day}</div>${rows}</div>`;
-  }).join("");
-  return `<div class="timetable-week-panel"><div class="sec-title">第 ${currentWeek} 周课程安排</div><div class="timetable-week-grid">${columns}</div></div>`;
-}
 /* 通用搜索：标题/备注/正文 + 自定义字段 + 类型特有字段 */
 function matchSearch(x, q, m){
   if((x.title||"").toLowerCase().includes(q)) return true;
@@ -1261,6 +2364,38 @@ function matchSearch(x, q, m){
     if(x[f.key] && String(x[f.key]).toLowerCase().includes(q)) return true;
   }
   return false;
+}
+
+function renderTimetableDayView(allClasses, recordItems = allClasses){
+  const dateValue = timetableSelectedDate || isoToday();
+  const events = scheduleEventsForDate(dateValue).filter(e => e.source === "timetable");
+  return renderTimelineDayView(dateValue, events, "timetable", dayGridCourseRail(allClasses, recordItems));
+}
+function renderTimetableWeekView(allClasses){
+  const days = timelineWeekDates(timetableWeekOffset, timetableSelectedDate || isoToday());
+  const range = `${days[0].date} – ${days[6].date}`;
+  return `<div class="timeline-toolbar"><button class="btn sm" id="timetable-week-prev">${icon("chevron-left",14,2.4)} 上一周</button><span class="date-chip">${icon("calendar",14)} ${range}</span><button class="btn sm" id="timetable-week-next">下一周 ${icon("chevron-right",14,2.4)}</button><button class="btn sm" id="timetable-week-today">今天</button></div>${renderUnifiedWeeklyTimeline(days, date => scheduleEventsForDate(date).filter(e => e.source === "timetable"), "timetable")}`;
+}
+function renderTimetableWeekViewLegacy(allClasses){
+  const days = ["周一","周二","周三","周四","周五","周六","周日"];
+  const currentWeek = getCurrentTermWeekNumber();
+  const active = allClasses.filter(x => isClassActiveInWeek(x, currentWeek));
+  const startHour = 0, endHour = 24, hourHeight = 54;
+  const totalHeight = (endHour - startHour) * hourHeight;
+  const labels = Array.from({length:endHour-startHour+1}, (_,i) => `<div class="timetable-axis-label" style="top:${i*hourHeight}px;transform:translateY(${i===0?"0":"-50%"})">${pad2(startHour+i)}:00</div>`).join("");
+  const columns = days.map(day => {
+    const items = active.filter(x => x.dayOfWeek === day).sort((a,b) => String(a.startTime).localeCompare(String(b.startTime)));
+    const blocks = items.map(x => {
+      const [sh,sm] = String(x.startTime || "08:00").split(":").map(Number);
+      const [eh,em] = String(x.endTime || "09:40").split(":").map(Number);
+      const top = Math.max(0, ((sh * 60 + sm) - startHour * 60) / 60 * hourHeight);
+      const end = Math.min(totalHeight, ((eh * 60 + em) - startHour * 60) / 60 * hourHeight);
+      const height = Math.max(30, end - top);
+      return `<button class="timetable-block" data-edit-timetable="${x.id}" style="top:${top}px;height:${height}px"><strong>${esc(x.courseName || x.title || "未命名课程")}</strong><span>${esc(x.startTime || "")} - ${esc(x.endTime || "")}</span><small>${esc(x.location || "未设置地点")}</small></button>`;
+    }).join("");
+    return `<div class="timetable-axis-col"><div class="timetable-axis-day">${day}</div><div class="timetable-axis-body" style="height:${totalHeight}px">${blocks || '<span class="timetable-axis-empty">暂无课程</span>'}</div></div>`;
+  }).join("");
+  return `<div class="timetable-week-panel"><div class="sec-title">第 ${currentWeek} 周课程时间表</div><div class="timetable-axis"><div class="timetable-axis-labels" style="height:${totalHeight}px">${labels}</div><div class="timetable-axis-days">${columns}</div></div></div>`;
 }
 
 function renderModule(key){
@@ -1323,6 +2458,7 @@ function renderModule(key){
 
   const body = it.length ? it.map(x=>recHTML(m,x)).join("")
     : `<div class="empty"><span class="e">${icon(m.icon,28)}</span><div>${q?'没有匹配的记录':'还没有记录，点右上角「新建」添加第一条吧'}</div></div>`;
+  const timetableView = m.type === "timetable" ? `<div class="seg timetable-switch" id="timetable-view-switcher"><div class="opt ${timetableViewMode === 'daily' ? 'on' : ''}" data-v="daily">日视图</div><div class="opt ${timetableViewMode === 'weekly' ? 'on' : ''}" data-v="weekly">周视图</div></div>${timetableViewMode === "weekly" ? renderTimetableWeekView(all) : renderTimetableDayView(all, it)}` : "";
 
   const sectionTitle = m.type==="finance" ? (moneyMonth?`${moneyMonth.split('-')[0]}年${parseInt(moneyMonth.split('-')[1],10)}月记录`:"全部记录") : "全部记录";
 
@@ -1332,14 +2468,14 @@ function renderModule(key){
       ${monthNav}
       <div class="spacer"></div><button class="btn" id="btn-new">${icon("plus",16,2.2)}新建</button></div>
     ${head}
-    ${m.type === "timetable" ? `<div class="seg timetable-switch" id="timetable-view-switcher"><div class="opt ${timetableViewMode === 'daily' ? 'on' : ''}" data-v="daily">日视图</div><div class="opt ${timetableViewMode === 'weekly' ? 'on' : ''}" data-v="weekly">周视图</div></div>${timetableViewMode === "weekly" ? renderTimetableWeekView(all) : ""}` : ""}
-    <div class="mod-layout">
+    ${timetableView}
+    ${m.type === "timetable" && timetableViewMode === "daily" ? "" : `<div class="mod-layout">
       <div class="mod-main">
         <div class="sec-title">${sectionTitle} <span id="rec-count" style="margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:12px">${it.length} 条</span></div>
         <div class="rec-grid">${body}</div>
       </div>
       <aside class="mod-side">${sideStats(m,all)}</aside>
-    </div>`;
+    </div>`}`;
   const s=$("#search");
   let composing=false;
   const refresh=()=>{ searchQ=s.value; renderModuleResults(key); };
@@ -1363,9 +2499,23 @@ function renderModule(key){
     if(allBtn) allBtn.onclick=()=>{ moneyMonth=""; renderModule(key); };
   }
   if(m.type === "timetable"){
-    const switcher=$("#timetable-view-switcher");
-    if(switcher) switcher.querySelectorAll(".opt").forEach(opt=>opt.onclick=()=>{ timetableViewMode=opt.dataset.v; renderModule(key); });
-    $("#screen").querySelectorAll("[data-edit-timetable]").forEach(el=>el.onclick=()=>openEditor(key,(data[key]||[]).find(x=>x.id==el.dataset.editTimetable)));
+    const switcher = $("#timetable-view-switcher");
+    if(switcher) switcher.querySelectorAll(".opt").forEach(opt => opt.onclick = () => { timetableViewMode = opt.dataset.v; renderModule(key); });
+    const prevDay = $("#timeline-prev-day"), nextDay = $("#timeline-next-day"), todayDay = $("#timeline-today");
+    if(prevDay) prevDay.onclick = () => { timetableSelectedDate = shiftDate(timetableSelectedDate || isoToday(), -1); renderModule(key); };
+    if(nextDay) nextDay.onclick = () => { timetableSelectedDate = shiftDate(timetableSelectedDate || isoToday(), 1); renderModule(key); };
+    if(todayDay) todayDay.onclick = () => { timetableSelectedDate = null; timetableWeekOffset = 0; renderModule(key); };
+    const prevWeek = $("#timetable-week-prev"), nextWeek = $("#timetable-week-next"), todayWeek = $("#timetable-week-today");
+    if(prevWeek) prevWeek.onclick = () => { timetableWeekOffset--; renderModule(key); };
+    if(nextWeek) nextWeek.onclick = () => { timetableWeekOffset++; renderModule(key); };
+    if(todayWeek) todayWeek.onclick = () => { timetableWeekOffset = 0; timetableSelectedDate = null; renderModule(key); };
+    bindDayGridTuning();
+    $("#screen").querySelectorAll("[data-timeline-id]").forEach(el => el.onclick = () => {
+      const id = String(el.dataset.timelineId).replace(/^course-/, "").split("-")[0];
+      const course = (data[key] || []).find(x => String(x.id) === id);
+      if(course) openEditor(key, course);
+    });
+    $("#screen").querySelectorAll(".daygrid-course-records [data-edit]").forEach(el => el.onclick = () => openEditor(key, (data[key] || []).find(x => String(x.id) === String(el.dataset.edit))));
   }
   wireModule(key);
 }
@@ -1532,11 +2682,14 @@ function recHTML(m,x){
 
   // default layout
   if(m.type==="todo"){ const p=(m.priorities||[]).find(p=>p.key===x.priority);
-    return `<div class="rec ${layoutCls}">${acts}<div class="top" style="padding-right:60px"><div class="chk js-chk ${x.done?'on':''}" data-id="${x.id}">${chkMark}</div>
+    const todoStatus=x.status||(x.done?"completed":"pending");
+    const statusLabel={pending:"待执行",in_progress:"进行中",completed:"已完成",deferred:"已延期",cancelled:"已取消"}[todoStatus]||"待执行";
+    const todoMeta=`<span class="rdate" style="margin-left:0;color:${x.plannerGoalId?"var(--accent)":"var(--text-secondary)"}">${x.plannerGoalId?"规划待办":"手动待办"} · ${statusLabel}${x.dueDate?` · 截止 ${esc(x.dueDate)}`:""}${x.estimatedMinutes?` · ${esc(String(x.estimatedMinutes))} 分钟`:""}</span>`;
+    return `<div class="rec ${layoutCls} ${todoStatus==="cancelled"?"is-muted":""}">${acts}<div class="top" style="padding-right:60px"><div class="chk js-chk ${x.done?'on':''}" data-id="${x.id}">${chkMark}</div>
       ${thumb}
       <div class="body" data-edit="${x.id}"><span class="rname ${x.done?'done':''}">${esc(x.title)}</span>
       ${p?`<span class="badge" style="background:${p.color};color:${p.text}"><span class="dot"></span>${p.label}</span>`:''}
-      ${x.note?`<span class="rdate" style="margin-left:0;color:var(--text-tertiary)">${esc(x.note).slice(0,40)}</span>`:''}${customBlock}</div></div></div>`; }
+      ${x.note?`<span class="rdate" style="margin-left:0;color:var(--text-tertiary)">${esc(x.note).slice(0,40)}</span>`:''}${todoMeta}${customBlock}</div></div></div>`; }
   if(m.type==="checkin"){ const on=!!(x.log&&x.log[today()]); const st=streak(x.log);
     return `<div class="rec ${layoutCls}">${acts}<div class="top" style="padding-right:60px"><div class="chk js-chk ${on?'on':''}" data-id="${x.id}">${chkMark}</div>
       ${thumb}
@@ -1576,8 +2729,12 @@ function streak(log){ if(!log) return 0; let n=0; const d=new Date();
 function wireModule(key){ const m=modOf(key);
   $("#screen").querySelectorAll(".js-chk").forEach(el=>el.onclick=e=>{ e.stopPropagation();
     const x=(data[key]).find(i=>i.id==el.dataset.id);
-    if(m.type==="todo") x.done=!x.done;
-    else if(m.type==="checkin"){ x.log=x.log||{}; const t=today(); x.log[t]?delete x.log[t]:x.log[t]=true; }
+    if(m.type==="todo"){
+      const nextStatus=x.done?"pending":"completed";
+      if(x.plannerGoalId){ plannerTaskStatus(x,nextStatus); return; }
+      x.status=nextStatus; x.done=nextStatus==="completed";
+      (data.schedule||[]).filter(block=>String(block.relatedItemId)===String(x.id)).forEach(block=>{ block.status=nextStatus; });
+    } else if(m.type==="checkin"){ x.log=x.log||{}; const t=today(); x.log[t]?delete x.log[t]:x.log[t]=true; }
     persist(); });
   $("#screen").querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openEditor(key,(data[key]).find(i=>i.id==el.dataset.edit)));
   $("#screen").querySelectorAll(".js-del").forEach(el=>el.onclick=e=>{ e.stopPropagation(); confirmDelete(key,el.dataset.id); });
@@ -1609,8 +2766,18 @@ function openEditor(key,item){
   const m=modOf(key); const editing=!!item; const d=item||newItem(m);
   let fields="";
   if(m.type==="todo"){
+    const planner=data.__planner||{};
+    const plannerGoal=planner.goal||{};
+    const plannerGoals=plannerGoal.id?[plannerGoal]:[];
+    const plannerGoalOptions=plannerGoals.map(g=>`<option value="${attr(String(g.id))}" ${String(g.id)===String(d.plannerGoalId||d.goalId)?"selected":""}>${esc(g.title||"未命名目标")}</option>`).join("");
+    const status=d.status|| (d.done?"completed":"pending");
     fields=`<div class="field"><label>任务</label><input id="f-title" value="${attr(d.title)}" placeholder="要做什么？"/></div>
       <div class="field"><label>优先级</label><div class="seg" id="f-prio">${(m.priorities||[]).map(p=>`<div class="opt ${p.key===d.priority?'on':''}" data-v="${p.key}">${p.label}</div>`).join("")}</div></div>
+      <div class="frow"><div class="field"><label>状态</label><select id="f-todo-status"><option value="pending" ${status==="pending"?"selected":""}>待执行</option><option value="in_progress" ${status==="in_progress"?"selected":""}>进行中</option><option value="completed" ${status==="completed"?"selected":""}>已完成</option><option value="deferred" ${status==="deferred"?"selected":""}>已延期</option><option value="cancelled" ${status==="cancelled"?"selected":""}>已取消</option></select></div>
+      <div class="field"><label>预计用时（分钟）</label><input id="f-estimatedMinutes" type="number" min="1" step="5" value="${attr(d.estimatedMinutes??"")}" placeholder="例如 30"/></div></div>
+      <div class="frow"><div class="field"><label>截止日期</label><input id="f-dueDate" type="date" value="${attr(d.dueDate||"")}"/></div>
+      <div class="field"><label>关联规划目标</label><select id="f-plannerGoalId"><option value="">不关联</option>${plannerGoalOptions}</select></div></div>
+      ${plannerGoals.length?`<p class="sub" style="margin:-4px 0 8px">手动待办也可以纳入当前规划；自动生成的待办会保留原有目标关联。</p>`:""}
       <div class="field"><label>备注</label><textarea id="f-note" placeholder="补充说明">${esc(d.note||'')}</textarea></div>`;
   } else if(m.type==="checkin"){
     fields=`<div class="field"><label>打卡项</label><input id="f-title" value="${attr(d.title)}" placeholder="例如：喝够 8 杯水"/></div>
@@ -1651,8 +2818,8 @@ function openEditor(key,item){
           <input type="time" id="f-end-time" value="${attr(d.endTime || '10:00')}" step="600">
         </div>
       </div>
-      <div class="field"><label>关联模块</label><div class="seg" id="f-relatedModule">${(m.fields.find(f=>f.key==="relatedModule").options||[]).map(o=>`<div class="opt ${o===d.relatedModule?'on':''}" data-v="${attr(o)}">${esc(o)}</div>`).join("")}</div></div>
-      <div class="field"><label>关联任务ID</label><input id="f-relatedItemId" value="${attr(d.relatedItemId)}" placeholder="仅在关联模块时填写"/></div>
+      <div class="field"><label>关联模块</label><div class="seg" id="f-relatedModule">${(m.fields.find(f=>f.key==="relatedModule").options||[]).map(o=>`<div class="opt ${o===d.relatedModule?'on':''}" data-v="${attr(o)}">${esc(o==="todo"?"待办":o)}</div>`).join("")}</div></div>
+      <div class="field"><label>关联待办</label><select id="f-relatedItemId"><option value="">不关联</option>${(data.todo||[]).filter(x=>!x.done&&x.status!=="cancelled").map(x=>`<option value="${attr(String(x.id))}" ${String(x.id)===String(d.relatedItemId)?"selected":""}>${esc(x.title||"未命名待办")}</option>`).join("")}</select></div>
       <div class="field"><label>显示颜色</label><div class="seg" id="f-color">${(m.fields.find(f=>f.key==="color").options||[]).map(o=>`<div class="opt ${o===d.color?'on':''}" data-v="${attr(o)}" style="background-color:${o}"></div>`).join("")}</div></div>
       <div class="field"><label>备注</label><textarea id="f-note" placeholder="备注信息">${esc(d.note||'')}</textarea></div>`;
   } else {
@@ -1709,11 +2876,37 @@ function openEditor(key,item){
     const seg=id=>{ const el=overlay.querySelector(id+" .on"); return el?el.dataset.v:undefined; };
     d.title=(val("#f-title")||"").trim()||"未命名";
     d.layout=seg("#f-layout")||'default';
-    if(m.type==="todo"){ d.priority=seg("#f-prio")||d.priority; d.note=(val("#f-note")||"").trim(); }
+    if(m.type==="todo"){
+      d.priority=seg("#f-prio")||d.priority;
+      d.note=(val("#f-note")||"").trim();
+      const nextStatus=val("#f-todo-status")||d.status||(d.done?"completed":"pending");
+      const allowedStatus=["pending","in_progress","completed","deferred","cancelled"];
+      d.status=allowedStatus.includes(nextStatus)?nextStatus:"pending";
+      d.done=d.status==="completed";
+      const estimated=Number(val("#f-estimatedMinutes"));
+      if(Number.isFinite(estimated)&&estimated>0) d.estimatedMinutes=Math.round(estimated);
+      else if(!editing) delete d.estimatedMinutes;
+      d.dueDate=(val("#f-dueDate")||"").trim();
+      const selectedGoal=(val("#f-plannerGoalId")||"").trim();
+      if(selectedGoal){
+        d.plannerGoalId=selectedGoal; d.goalId=selectedGoal; d.source=d.source||"manual";
+        const planner=data.__planner||{};
+        const goal=planner.goal&&String(planner.goal.id)===String(selectedGoal)?planner.goal:null;
+        if(goal){ d.planScope=d.planScope||"long_term"; d.plannerReason=d.plannerReason||"手动加入当前规划"; }
+      } else if(!d.plannerTaskId){
+        delete d.plannerGoalId; delete d.goalId; delete d.milestoneId; delete d.deliverableId;
+      }
+      if(d.plannerGoalId){
+        plannerTaskStatus(d,d.status);
+      } else {
+        (data.schedule||[]).filter(x=>String(x.relatedItemId)===String(d.id)).forEach(block=>{ block.status=d.status; });
+        persist();
+      }
+    }
     else if(m.type==="progress"){ d.current=Math.max(0,+val("#f-cur")||0); d.target=Math.max(1,+val("#f-tgt")||1); d.unit=(val("#f-unit")||"").trim(); d.note=(val("#f-note")||"").trim(); }
     else if(m.type==="finance"){ d.type=seg("#f-ftype")||"expense"; d.amount=Math.max(0,+val("#f-amt")||0); d.category=seg("#f-cat")||(m.categories&&m.categories[0])||"其他"; d.date=val("#f-date"); }
     else if(m.type==="timetable"){ d.courseName=(val("#f-courseName")||"").trim(); d.instructor=(val("#f-instructor")||"").trim(); d.location=(val("#f-location")||"").trim(); d.dayOfWeek=seg("#f-dayOfWeek")||d.dayOfWeek; d.startTime=(val("#f-startTime")||"").trim(); d.endTime=(val("#f-endTime")||"").trim(); d.startWeek=Math.max(1,+val("#f-startWeek")||1); d.endWeek=Math.max(1,+val("#f-endWeek")||16); d.weekType=seg("#f-weekType")||d.weekType; d.customWeeks=(val("#f-customWeeks")||"").trim(); d.note=(val("#f-note")||"").trim(); }
-    else if(m.type==="schedule"){ d.title=(val("#f-title")||"").trim()||"未命名"; d.date=val("#f-date"); d.startTime=val("#f-start-time")||"09:00"; d.endTime=val("#f-end-time")||"10:00"; d.relatedModule=seg("#f-relatedModule"); d.relatedItemId=(val("#f-relatedItemId")||"").trim(); d.color=seg("#f-color"); d.note=(val("#f-note")||"").trim(); }
+    else if(m.type==="schedule"){ d.title=(val("#f-title")||"").trim()||"未命名"; d.date=val("#f-date"); d.startTime=val("#f-start-time")||"09:00"; d.endTime=val("#f-end-time")||"10:00"; if(d.endTime<=d.startTime){ toast("结束时间必须晚于开始时间"); return; } d.relatedModule=seg("#f-relatedModule")||"无"; d.relatedItemId=(val("#f-relatedItemId")||"").trim(); d.color=seg("#f-color"); d.note=(val("#f-note")||"").trim(); }
     else if(m.type==="note"){ d.mood=seg("#f-mood")||d.mood||""; d.content=(val("#f-content")||"").trim(); d.date=val("#f-date"); }
     // save custom fields (skip timetable & schedule — saved via hardcoded branches above)
     if(!skipCustomFields) (m.fields||[]).forEach(f=>{
@@ -1729,7 +2922,7 @@ function openEditor(key,item){
 }
 
 function newItem(m){ const base={id:Date.now()}; let item;
-  if(m.type==="todo") item={...base,title:"",priority:(m.priorities&&m.priorities[1]?m.priorities[1].key:"P1"),done:false,note:""};
+  if(m.type==="todo") item={...base,title:"",priority:(m.priorities&&m.priorities[1]?m.priorities[1].key:"P1"),done:false,status:"pending",dueDate:"",estimatedMinutes:"",plannerGoalId:"",source:"manual",note:""};
   else if(m.type==="checkin") item={...base,title:"",log:{}};
   else if(m.type==="progress") item={...base,title:"",current:0,target:(m.unit==="页"?100:20),unit:m.unit||"",note:""};
   else if(m.type==="finance") item={...base,title:"",type:"expense",amount:"",category:(m.categories&&m.categories[0])||"其他",date:isoToday()};
@@ -1746,6 +2939,7 @@ function newItem(m){ const base={id:Date.now()}; let item;
 
 /* ---------- delete confirm ---------- */
 function confirmDelete(key,id){ const item=(data[key]||[]).find(i=>i.id==id); if(!item) return;
+  const undoData=structuredClone(item);
   const overlay=document.createElement("div"); overlay.className="overlay";
   overlay.innerHTML=`<div class="modal" style="width:400px"><h3>删除记录</h3><div class="sub">确定删除「${esc(item.title||'这条记录')}」？此操作不可撤销。</div>
     <div class="modal-actions"><div class="spacer"></div><button class="btn ghost" id="c-cancel">取消</button><button class="btn danger" id="c-ok">删除</button></div></div>`;
@@ -1754,7 +2948,7 @@ function confirmDelete(key,id){ const item=(data[key]||[]).find(i=>i.id==id); if
   const close=()=>{ unlockScroll(); overlay.remove(); };
   overlay.onclick=e=>{ if(e.target===overlay) close(); };
   overlay.querySelector("#c-cancel").onclick=close;
-  overlay.querySelector("#c-ok").onclick=()=>{ data[key]=data[key].filter(i=>i.id!=id); persist(); close(); };
+  overlay.querySelector("#c-ok").onclick=()=>{ data[key]=data[key].filter(i=>i.id!=id); if(item.plannerGoalId&&key==="todo"){ (data.schedule||[]).filter(x=>String(x.relatedItemId)===String(id)).forEach(x=>{ x.relatedItemId=""; x.status="orphaned"; }); } persist(); close(); setTimeout(()=>{ const undo=confirm("已删除。是否撤销这次删除？"); if(undo){ data[key]=data[key]||[]; data[key].unshift(undoData); persist(); toast("已恢复删除的记录"); } },100); };
 }
 
 /* ---------- TREND EDITOR MODAL ---------- */
@@ -1845,6 +3039,22 @@ function renderSettings() {
       </div>
     </div>
 
+    <div class="sec-title">自定义 AI 模型</div>
+    <div class="card ai-config-card" style="padding:20px;display:flex;flex-direction:column;gap:15px;">
+      <div class="ai-config-intro"><div><div style="font-weight:700;font-size:14px;">AI 接口配置</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">只需填写接口地址、API Key 和模型名称，配置仅保存在本机。</div></div><span class="ai-config-state" id="ai-config-state">${getAIConfig().endpoint?'已配置':'未配置'}</span></div>
+      <div class="field"><label>接口地址</label><input id="f-ai-endpoint" type="url" value="${attr(getAIConfig().endpoint||'')}" placeholder="例如：https://api.example.com/v1/chat/completions"/></div>
+      <div class="field"><label>API Key</label><input id="f-ai-key" type="password" value="${attr(getAIConfig().apiKey||'')}" placeholder="仅保存在本机，不会写入项目文件"/></div>
+      <div class="field"><label>模型名称</label><input id="f-ai-model" value="${attr(getAIConfig().model||'')}" placeholder="例如：my-model"/></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" id="btn-ai-save">保存配置</button><button class="btn ghost" id="btn-ai-test">测试连接</button><button class="btn danger" id="btn-ai-clear" ${getAIConfig().endpoint?'':'disabled'}>清除配置</button></div>
+      <div id="ai-config-message" class="ai-config-message"></div>
+    </div>
+
+    <div class="sec-title">开发调试</div>
+    <div class="card" style="padding:20px;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">运行日志</div><div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">查看完整运行现场，复制或导出日志反馈给助手。</div></div>
+      <button class="btn" id="btn-dev-logs">打开日志</button>
+    </div>
+
     <div class="sec-title">数据管理</div>
     <div class="card" style="padding:20px;display:flex;flex-direction:column;gap:15px;">
       <div style="display:flex;align-items:center;gap:12px;">
@@ -1898,6 +3108,7 @@ function renderSettings() {
     </div>
     </div>`;
 
+  $("#btn-dev-logs").onclick = () => go("devlogs");
   $("#btn-settings-cancel").onclick = () => go("home");
   $("#btn-settings-save").onclick = () => {
     CONFIG.owner = $("#f-owner").value.trim();
@@ -2070,6 +3281,13 @@ function renderSettings() {
     document.documentElement.style.setProperty('--card-opacity', v);
   };
 
+  // ---- 自定义 AI 模型 ----
+  const readAIForm=()=>({endpoint:$("#f-ai-endpoint").value.trim(),model:$("#f-ai-model").value.trim(),authType:"bearer",apiKey:$("#f-ai-key").value.trim()});
+  const aiMessage=(text,good=false)=>{ const el=$("#ai-config-message"); if(el){el.textContent=text;el.className=`ai-config-message ${good?'is-good':'is-error'}`;} };
+  $("#btn-ai-save").onclick=()=>{ const cfg=readAIForm(); if(!cfg.endpoint||!cfg.apiKey||!cfg.model){ aiMessage("请填写接口地址、API Key 和模型名称"); return; } setAIConfig({...cfg,lastTest:null}); $("#ai-config-state").textContent="已配置"; $("#btn-ai-clear").disabled=false; aiMessage("配置已保存在本机",true); toast("AI 配置已保存"); };
+  $("#btn-ai-test").onclick=async()=>{ const cfg=readAIForm(); aiMessage("正在测试接口..."); try{ await testAIConnection(cfg); setAIConfig({...cfg,lastTest:new Date().toISOString()}); $("#ai-config-state").textContent="连接正常"; $("#btn-ai-clear").disabled=false; aiMessage("连接测试成功，配置已保存在本机",true); toast("AI 接口连接成功"); }catch(err){ aiMessage(`连接测试失败：${err.name==='AbortError'?'请求超时':err.message}`); } };
+  $("#btn-ai-clear").onclick=()=>{ if(!confirm("确定清除本机保存的 AI 配置吗？")) return; delete data.__aiConfig; store.save(); renderSettings(); toast("AI 配置已清除"); };
+
   // ---- 数据导出 ----
   $("#btn-export").onclick = () => {
     const json = JSON.stringify(data, null, 2);
@@ -2099,20 +3317,28 @@ function renderSettings() {
         // 基本校验：确保导入的是合法数据对象
         if(typeof imported !== "object" || imported === null || Array.isArray(imported))
           throw new Error("文件格式不正确");
-        // 确保 CONFIG 中定义的所有模块 key 都存在
+        // 校验模块结构，避免合法 JSON 覆盖成不可用的数据结构
         CONFIG.modules.forEach(m => {
-          if(!imported[m.key]) imported[m.key] = structuredClone(m.seed || []);
+          if(imported[m.key] == null) imported[m.key] = structuredClone(m.seed || []);
+          if(!Array.isArray(imported[m.key])) throw new Error(`${m.name} 数据必须是数组`);
         });
-        // 写入并刷新，保留同步配置
+        const importedCount = CONFIG.modules.reduce((sum,m)=>sum + imported[m.key].length, 0);
+        const currentCount = CONFIG.modules.reduce((sum,m)=>sum + ((data[m.key]||[]).length), 0);
+        if(!confirm(`导入将覆盖当前 ${currentCount} 条记录，替换为 ${importedCount} 条记录。已确认文件格式，是否继续？`)) return;
+        // 写入并刷新，保留同步配置与导入前备份
         const preservedSync = data.__sync;
+        const importBackup = structuredClone(data);
         data = imported;
+        data.__lastImportBackup = importBackup;
         if(preservedSync) data.__sync = preservedSync;
         data.__lastModified = new Date().toISOString();
+        data.__onboarding = { seen:true, demoChoice:"imported", completedAt:new Date().toISOString() };
+        data.__isDemoData = false;
         store.save();
         buildNav();
         render();
         scheduleSyncPush();
-        toast("数据导入成功");
+        toast(`数据导入成功，已保留导入前备份（${currentCount} 条）`);
       } catch(err) {
         toast("导入失败: " + err.message);
       }
@@ -2125,8 +3351,12 @@ function renderSettings() {
   $("#btn-reset").onclick = () => {
     if(!confirm("确定要清除全部数据并恢复初始状态吗？此操作不可撤销。")) return;
     const preservedSync = data.__sync; // 保留同步配置，避免重置后丢失 token
+    const resetBackup = structuredClone(data);
     localStorage.removeItem(CONFIG.storageKey);
     data = store.load();
+    data.__lastImportBackup = resetBackup;
+    data.__onboarding = { seen:false, demoChoice:"pending" };
+    data.__isDemoData = true;
     if(preservedSync) data.__sync = preservedSync;
     store.save();
     buildNav();
@@ -2214,17 +3444,20 @@ function renderSettings() {
 }
 
 /* ---------- router / sidebar ---------- */
-let lastPullByView = 0;   // 页面切换不触发同步提示
+let lastPullByView = 0;   // 保留节流状态，页面切换不再触发同步提示
 function ifPullOnView(v){
-  // 仅在设置页手动连接、上传或拉取时显示同步提示。
+  // 页面切换只负责渲染，云端同步仅由设置页中的手动按钮触发。
   return;
 }
 function dateStr(){ const n=new Date(); const wd="日一二三四五六"[n.getDay()]; return `${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 周${wd}`; }
-function go(v){ view=v; searchQ=""; renderNavActive(); render(); closeDrawer(); window.scrollTo({top:0}); ifPullOnView(v); }
+function go(v){ const from=view; view=v; devLog("info","页面导航","切换页面",{from,to:v}); searchQ=""; renderNavActive(); render(); closeDrawer(); window.scrollTo({top:0}); ifPullOnView(v); }
 function render(){
   if(view==="home") renderHome();
   else if(view==="insight") renderInsight();
+  else if(view==="planner") renderPlanner();
+  else if(view==="execution") renderExecution();
   else if(view==="settings") renderSettings();
+  else if(view==="devlogs") renderDevLogs();
   else if(view==="schedule") {
     renderSchedule();
   } else renderModule(view);
@@ -2233,7 +3466,10 @@ function render(){
     const m = modOf(view);
     if(view==="home"){ $("#topTitle").firstChild.textContent="我的工作台"; $("#topSub").textContent=CONFIG.slogan; }
     else if(view==="insight"){ $("#topTitle").firstChild.textContent="洞察复盘"; $("#topSub").textContent="各模块进展一览"; }
-    else if(view==="settings"){ $("#topTitle").firstChild.textContent="设置"; $("#topSub").textContent="个性化你的工作台"; }
+    else if(view==="planner"){ $("#topTitle").firstChild.textContent="计划中心"; $("#topSub").textContent="目标拆解与计划变更"; }
+    else if(view==="execution"){ $("#topTitle").firstChild.textContent="今日执行"; $("#topSub").textContent="时间块与行动队列"; }
+    else if(view==="settings"){  $("#topTitle").firstChild.textContent="设置"; $("#topSub").textContent="个性化你的工作台"; }
+    else if(view==="devlogs"){  $("#topTitle").firstChild.textContent="开发日志"; $("#topSub").textContent="当前 PC 调试运行现场"; }
     else if(view==="schedule"){ $("#topTitle").firstChild.textContent="日程管理"; $("#topSub").textContent="每日日程安排与可视化"; }
     else if(m){ $("#topTitle").firstChild.textContent=m.name; $("#topSub").textContent=m.desc||""; }
   }
@@ -2267,24 +3503,20 @@ function buildNav(){
   applyPageBg(); // Apply page background image + blur
   applyOpacity(); // Apply sidebar + card opacity
 
-  const groupedModules = {};
+  const groupedModules = {"今日行动":[], "打卡追踪":[], "内容记录":[]};
   CONFIG.modules.forEach(m => {
-    const category = m.category || "功能模块"; // Default category
-    if (!groupedModules[category]) {
-      groupedModules[category] = [];
-    }
-    groupedModules[category].push(m);
+    const category = m.category || "内容记录";
+    (groupedModules[category] || groupedModules["内容记录"]).push(m);
   });
 
   let html = [`<div class="navi" data-go="home">${icon("home",19)}首页</div>`];
-
-  // Render grouped modules
-  for (const categoryName in groupedModules) {
+  html.push(`<div class="nav-sep">规划</div>`, `<div class="navi" data-go="planner">${icon("target",19)}计划中心</div>`, `<div class="navi" data-go="execution">${icon("play",19)}今日执行</div>`);
+  ["今日行动", "打卡追踪", "内容记录"].forEach(categoryName => {
     html.push(`<div class="nav-sep">${categoryName}</div>`);
     groupedModules[categoryName].forEach(m => {
       html.push(`<div class="navi" data-go="${m.key}">${icon(m.icon,19)}${m.name}</div>`);
     });
-  }
+  });
 
   html.push(`<div class="nav-sep">统计</div>`, `<div class="navi" data-go="insight">${icon("chart",19)}洞察复盘</div>`);
   // Theme toggle button
@@ -2292,6 +3524,7 @@ function buildNav(){
   html.push(`<div class="nav-sep">其他</div>`);
   html.push(`<div class="navi theme-toggle" id="themeToggle">${icon(theme === "dark" ? "sun" : "moon", 19)}${theme === "dark" ? "浅色模式" : "深色模式"}</div>`);
   html.push(`<div class="navi" data-go="settings">${icon("gear",19)}设置</div>`);
+  html.push(`<div class="navi" data-go="devlogs">${icon("activity",19)}开发日志</div>`);
 
   // 桌面端：填充侧栏 #nav；手机端：填充抽屉 #drawerList
   const navContainer = MOBILE ? $("#drawerList") : $("#nav");
@@ -2313,9 +3546,16 @@ function buildNav(){
   // 手机端：初始化日期标签、抽屉、FAB、底部导航
   if(MOBILE) initMobileUI();
 }
+function renderMobileTabs(){
+  if(!MOBILE) return;
+  const bar=$("#mobileTabbar"); if(!bar) return;
+  bar.querySelectorAll("[data-mobile-go]").forEach(el=>el.classList.toggle("active",el.dataset.mobileGo===view));
+  bar.querySelectorAll("[data-mobile-more]").forEach(el=>el.classList.toggle("active",["planner","insight","settings"].includes(view)));
+}
 function renderNavActive(){
   const navContainer = MOBILE ? $("#drawerList") : $("#nav");
   navContainer.querySelectorAll(".navi").forEach(el=>el.classList.toggle("active", el.dataset.go===view));
+  renderMobileTabs();
 }
 
 /* ---------- 手机端 UI 初始化 ---------- */
@@ -2331,6 +3571,12 @@ function initMobileUI(){
   if(scrim) scrim.onclick = closeDrawer;
   if(drawerClose) drawerClose.innerHTML = icon("close",18);
   if(drawerClose) drawerClose.onclick = closeDrawer;
+  const tabbar=$("#mobileTabbar");
+  if(tabbar){
+    tabbar.querySelectorAll("[data-mobile-go]").forEach(el=>el.onclick=()=>go(el.dataset.mobileGo));
+    tabbar.querySelectorAll("[data-mobile-more]").forEach(el=>el.onclick=openDrawer);
+  }
+  renderMobileTabs();
 }
 
 function openDrawer(){

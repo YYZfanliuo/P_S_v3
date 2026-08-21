@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#f4f3f0" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1917" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+<link rel="apple-touch-icon" href="assets/icon-192.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="format-detection" content="telephone=no" />
+<title>我的工作台 · 手机版</title>
+<link rel="stylesheet" href="styles/style.css?v=10">
+<link rel="stylesheet" href="styles/mobile.css?v=11">
+<script>
+// 在页面渲染前应用保存的主题，避免 FOUC
+(function(){
+  try {
+    var raw = localStorage.getItem("workbench-desktop-v1");
+    if(raw){
+      var d = JSON.parse(raw);
+      if(d.__theme) document.documentElement.setAttribute("data-mode", d.__theme);
+    }
+  } catch(e){}
+})();
+</script>
+</head>
+<body class="mobile">
+<div class="app">
+  <!-- top bar -->
+  <div class="topbar">
+    <button class="menu-btn" id="btn-menu" aria-label="打开菜单"></button>
+    <div class="title" id="topTitle">我的工作台<small id="topSub">Personal Workbench</small></div>
+    <span class="date-chip" id="dateChip"></span>
+  </div>
+  <!-- main content -->
+  <div id="screen"></div>
+</div>
+
+<!-- drawer scrim -->
+<div class="scrim" id="scrim"></div>
+
+<!-- drawer (slide-in from left) -->
+<aside class="drawer" id="drawer">
+  <div class="dh">
+    <button class="dclose" id="drawerClose" aria-label="关闭菜单"></button>
+    <div class="brand" id="drawerBrand" title="点击更换头像（自动压缩 ≤256×256 JPEG 85%）"><img src="assets/avatar.jpg" alt="头像" id="avaImg"/><span class="brand-cam" id="avaCam"></span></div>
+    <input type="file" id="avatarInput" accept="image/*" hidden/>
+    <div><h2 id="brandName">我的工作台</h2><p id="brandSlogan">Personal Workbench</p></div>
+  </div>
+  <div class="dsep"></div>
+  <div id="drawerList" class="drawer-nav"></div>
+  <div class="dsep"></div>
+  <div class="dfoot" id="foot">数据仅存在本机 · 可在设置中开启同步</div>
+  <div class="ver-tag" id="verTag"></div>
+</aside>
+
+<script src="scripts/app.js?v=15"></script>
+</body>
+</html>

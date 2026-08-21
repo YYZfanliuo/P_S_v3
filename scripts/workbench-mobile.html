@@ -390,7 +390,7 @@
 <aside class="drawer" id="drawer">
   <div class="dh">
     <button class="dclose" id="drawerClose"></button>
-    <div class="brand" id="drawerBrand" title="点击更换头像"><img src="assets/avatar.jpg" alt="头像" id="brandImg"/><span class="brand-cam" id="brandCam"></span></div>
+    <div class="brand" id="drawerBrand" title="点击更换头像"><img src="../assets/avatar.jpg?v=2" alt="头像" id="brandImg"/><span class="brand-cam" id="brandCam"></span></div>
     <input type="file" id="avatarInput" accept="image/*" hidden/>
     <div><h2 id="drawerName">我的工作台</h2><p id="drawerSlogan">Personal Workbench</p></div>
   </div>
@@ -405,7 +405,7 @@
    CONFIG — 唯一需要定制的地方。
    modules 里每个模块 = 一个功能页；type 决定它长什么样、记什么字段。
    支持的 type：
-     todo     今日计划/待办（勾选 + 优先级）
+     todo     待办/待办（勾选 + 优先级）
      checkin  习惯打卡（连续天数，每天清零）
      progress 长期计划（进度条：当前/目标）
      finance  记账（收入/支出 + 分类 + 金额）
@@ -431,7 +431,7 @@ const CONFIG = {
 
   // 今日概览环形（value 为 0-100 的完成度，calc 返回 {value, sub}）
   overview: [
-    { key: "todo",  label: "今日计划", icon: "list", color: "var(--accent)",
+    { key: "todo",  label: "待办", icon: "list", color: "var(--accent)",
       calc: d => { const it=d.todo||[]; const done=it.filter(x=>x.done).length; return { value: it.length?Math.round(done/it.length*100):0, sub: `${done}/${it.length} 项` }; } },
     { key: "checkin", label: "打卡", icon: "leaf", color: "var(--module-1)",
       calc: d => { const it=d.checkin||[]; const t=today(); const done=it.filter(x=>x.log&&x.log[t]).length; return { value: it.length?Math.round(done/it.length*100):0, sub: `${done}/${it.length} 项` }; } },
@@ -458,7 +458,7 @@ const CONFIG = {
   // ============ 模块定义 ============
   modules: [
     {
-      key: "todo", name: "今日计划", icon: "list", tint: "#efeee8", color: "var(--accent)",
+      key: "todo", name: "待办", icon: "list", tint: "#efeee8", color: "var(--accent)",
       type: "todo", desc: "任务清单与进度追踪",
       priorities: [
         { key: "P0", label: "重要", color: "#f6ece9", text: "#c25d4f" },

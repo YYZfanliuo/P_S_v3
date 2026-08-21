@@ -24,20 +24,82 @@ body.mobile .layout { min-height: 100vh; min-height: 100dvh; }
 
 /* ---- App 容器 ---- */
 body.mobile .app {
-  position: relative;          /* 提升层级，浮在底板背景层(body::after)之上 */
+  position: relative;
   z-index: 1;
-  padding: 0 14px calc(24px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(88px + env(safe-area-inset-bottom));
 }
+body.mobile #screen { padding-top: 8px; }
+body.mobile .mobile-tabbar {
+  position: fixed;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 2px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--surface-card) 94%, transparent);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+body.mobile .mobile-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+body.mobile .mobile-tab.active { color: var(--accent); font-weight: 700; }
+body.mobile .mobile-tab-icon { width: 20px; height: 20px; position: relative; }
+body.mobile .mobile-tab-icon::before { content: ""; position: absolute; inset: 3px; border: 1.5px solid currentColor; border-radius: 5px; }
+body.mobile .mobile-tab:nth-child(1) .mobile-tab-icon::before { border-radius: 50%; }
+body.mobile .mobile-tab:nth-child(2) .mobile-tab-icon::before { border-radius: 3px; }
+body.mobile .mobile-tab:nth-child(3) .mobile-tab-icon::before { border-radius: 50% 50% 3px 3px; }
+body.mobile .mobile-tab:nth-child(4) .mobile-tab-icon::before { border-radius: 50%; box-shadow: 6px 0 0 -4px currentColor, -6px 0 0 -4px currentColor; }
+body.mobile .mobile-tab:active { background: var(--surface-muted); }
 
-/* 课程表周视图：手机端横向浏览七天课程列 */
-body.mobile .timetable-week-panel { overflow-x: auto; }
-body.mobile .timetable-week-grid { display: grid; grid-template-columns: repeat(7, minmax(108px, 1fr)); gap: 8px; min-width: 780px; }
-body.mobile .timetable-week-col { background: var(--surface-nested); border-radius: var(--radius-tile); padding: 8px; min-height: 120px; }
-body.mobile .timetable-week-day { font-weight: 700; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-body.mobile .timetable-week-item { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding: 8px; background: var(--surface-card); border-radius: var(--radius-control); box-shadow: var(--shadow-card); cursor: pointer; }
-body.mobile .timetable-week-item strong { font-size: 13px; }
-body.mobile .timetable-week-item span, body.mobile .timetable-week-item small { color: var(--text-secondary); font-size: 12px; }
-body.mobile .timetable-week-empty { color: var(--text-tertiary); font-size: 12px; padding-top: 10px; }
+/* 统一时间视图：日/周网格都在单屏容器内完整展示 */
+body.mobile .timeline-toolbar { gap: 6px; margin: 10px 0; }
+body.mobile .timeline-toolbar .date-chip { order: -1; width: 100%; justify-content: center; }
+body.mobile .timeline-shell { border-radius: var(--radius-tile); }
+body.mobile .timeline-day-view { grid-template-columns: 52px minmax(0,1fr); }
+body.mobile .timeline-day-view, body.mobile .timeline-week-view { max-height:none; overflow:visible; }
+body.mobile .timeline-axis { min-height:0; }
+body.mobile .timeline-label { right: 6px; font-size: 10px; }
+body.mobile .timeline-day-body { min-width:210px; }
+body.mobile .timeline-event { left:5px; right:5px; padding:6px 7px; }
+body.mobile .timeline-event strong { font-size:11px; }
+body.mobile .timeline-event small { font-size:9px; }
+body.mobile .timeline-week-column { min-width:0; }
+body.mobile .timeline-week-header { font-size:10px; }
+body.mobile .timeline-empty { font-size:11px; }
+body.mobile .weekgrid-title { align-items:flex-start; flex-direction:column; gap:3px; margin:10px 0 7px; }
+body.mobile .weekgrid-title span { font-size:9px; }
+body.mobile .weekgrid-shell { grid-template-columns:30px minmax(0,1fr); border-radius:var(--radius-tile); }
+body.mobile .weekgrid-corner, body.mobile .weekgrid-hour { font-size:7px; }
+body.mobile .weekgrid-headers { grid-template-columns:repeat(7,minmax(0,1fr)); }
+body.mobile .weekgrid-day-header { gap:1px; font-size:7px; }
+body.mobile .weekgrid-day-header b { width:14px; height:14px; font-size:8px; }
+body.mobile .weekgrid-row { grid-template-columns:30px repeat(7,minmax(0,1fr)); height:32px; }
+body.mobile .weekgrid-hour { padding-top:3px; }
+body.mobile .weekgrid-event { top:2px; bottom:2px; padding:1px; border-left-width:1px; }
+body.mobile .weekgrid-event strong { font-size:6px; }
+body.mobile .weekgrid-event span { font-size:8px; }
+
+body.mobile .onboarding-card { display:block; margin:0 0 14px; padding:16px; }
+body.mobile .onboarding-copy h3 { font-size:15px; }
+body.mobile .onboarding-copy p { font-size:12px; }
+body.mobile .onboarding-actions { justify-content:stretch; margin-top:13px; }
+body.mobile .onboarding-actions .btn { flex:1; justify-content:center; padding:9px 10px; font-size:12px; }
 
 /* ============================================================
    TOP BAR
@@ -131,7 +193,15 @@ body.mobile .clock-card .cmeta { font-size: 11px; gap: 8px; }
    ============================================================ */
 body.mobile .tile {
   padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
+body.mobile .tile + .tile { margin-top: 4px; }
+body.mobile .tile-h { min-height: 30px; }
+body.mobile .tile-h .tic { display: none; }
 body.mobile .tile-h { margin-bottom: 12px; }
 body.mobile .tile-h .zh { font-size: 13px; }
 body.mobile .tile-h .en { font-size: 9px; }
@@ -287,6 +357,58 @@ body.mobile .hero { padding: 10px 14px; }
 body.mobile .hero-ic { width: 36px; height: 36px; }
 body.mobile .hero-v { font-size: 18px; }
 body.mobile .hero-l { font-size: 12px; }
+
+/* ============================================================
+   DAILY MINUTE GRID — 日程 / 课程日视图
+   ============================================================ */
+body.mobile .daygrid-title { align-items:flex-start; flex-direction:column; gap:3px; margin:10px 0 7px; }
+body.mobile .daygrid-title span { font-size:10px; }
+body.mobile .daygrid-layout { display:flex; flex-direction:column; gap:10px; width:100%; min-width:0; }
+body.mobile .daygrid-shell { order:1; grid-template-columns:30px minmax(0,1fr); max-height:none; width:100%; min-width:0; border-radius:var(--radius-tile); }
+body.mobile .daygrid-projects, body.mobile .daygrid-course-rail { order:2; max-height:none; width:100%; min-width:0; }
+body.mobile .daygrid-layout > .daygrid-shell { width:100%; }
+body.mobile .daygrid-body { min-width:0; }
+body.mobile .daygrid-label { height:34px; padding:7px 3px 0 0; font-size:8px; }
+body.mobile .daygrid-hour-row { height:34px; }
+body.mobile .daygrid-header { padding:0; font-size:8px; }
+body.mobile .daygrid-minute-head { grid-template-columns:repeat(6, minmax(0,1fr)); width:100%; font-size:7px; }
+body.mobile .daygrid-header small { font-size:9px; }
+body.mobile .daygrid-event { padding:2px 3px; border-radius:3px; border-left-width:1px; }
+body.mobile .daygrid-event strong { font-size:var(--daygrid-event-title-font, 7px); }
+body.mobile .daygrid-event small { font-size:var(--daygrid-event-detail-font, 7px); }
+body.mobile .daygrid-event-source { display:block; font-size:var(--daygrid-event-source-font, 6px); }
+body.mobile .daygrid-event.is-continuation { border-radius:0 3px 3px 0; }
+
+/* 今日执行：为时间块保留稳定的横向标题空间，避免中文逐字竖排 */
+body.mobile .execution-block {
+  display:grid;
+  grid-template-columns:54px minmax(0,1fr);
+  align-items:start;
+  gap:8px 10px;
+}
+body.mobile .execution-block-time { grid-column:1; grid-row:1; min-width:0; flex:none; }
+body.mobile .execution-block-main { grid-column:2; grid-row:1; min-width:0; }
+body.mobile .execution-block-main b,
+body.mobile .execution-block-main small {
+  writing-mode:horizontal-tb;
+  word-break:keep-all;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+body.mobile .execution-status {
+  grid-column:2;
+  grid-row:2;
+  justify-self:start;
+  width:84px;
+  max-width:100%;
+}
+body.mobile .execution-result-details {
+  grid-column:2;
+  grid-row:3;
+  min-width:0;
+  margin:0;
+}
 
 /* ============================================================
    SCHEDULE GRID — 日程管理
@@ -556,3 +678,48 @@ body.mobile .toast.show {
    ============================================================ */
 body.mobile ::-webkit-scrollbar { width: 0; height: 0; }
 body.mobile { scrollbar-width: none; }
+
+/* ============================================================
+   ORIGINAL REPLICA POLISH — 移动端首页视觉回迁
+   ============================================================ */
+body.mobile .app { padding-left: 14px; padding-right: 14px; }
+body.mobile .topbar {
+  padding-top: calc(env(safe-area-inset-top) + 12px);
+  background: color-mix(in srgb, var(--page-bg) 94%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+body.mobile .menu-btn { background: var(--surface-card); border: 1px solid var(--border); box-shadow: none; }
+body.mobile .topbar .title { font-weight: 800; }
+body.mobile .date-chip { background: var(--surface-card); border-color: var(--border); box-shadow: none; }
+body.mobile .sec-grp { margin-top: 22px; margin-bottom: 10px; }
+body.mobile .sec-grp .bar { height: 16px; background: var(--module-1); }
+body.mobile .clock-card {
+  min-height: 166px;
+  padding: 20px 20px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-overlay);
+}
+body.mobile .clock-card .hi { font-size: 21px; }
+body.mobile .clock-card .sub { max-width: 230px; }
+body.mobile .clock-card .clk { font-size: clamp(35px, 11vw, 45px); }
+body.mobile .tile-h .tic { color: var(--text-tertiary); }
+body.mobile .tile-h .r { color: var(--module-2); }
+body.mobile .planner-layout,
+body.mobile .execution-grid { display:block; }
+body.mobile .planner-panel,
+body.mobile .execution-card { border:0; border-bottom:1px solid var(--border); border-radius:0; box-shadow:none; background:transparent; padding:16px 0; }
+body.mobile .planner-panel + .planner-panel,
+body.mobile .execution-card + .execution-card { margin-top:0; }
+body.mobile .planner-modes { grid-template-columns:1fr; gap:6px; }
+body.mobile .planner-mode { min-height:56px; padding:12px 14px; text-align:left; }
+body.mobile .planner-goal-row { border-bottom:1px solid var(--border); border-radius:0; padding:10px 0; }
+body.mobile .planner-task,
+body.mobile .planner-schedule-row,
+body.mobile .execution-task { border-bottom:1px solid var(--border); border-radius:0; background:transparent; }
+body.mobile .execution-hero { padding:16px 0; border:0; border-bottom:1px solid var(--border); border-radius:0; box-shadow:none; background:transparent; }
+body.mobile .execution-alert { border:0; border-bottom:1px solid var(--border); border-left:3px solid var(--module-4); border-radius:0; background:transparent; padding:14px 10px; }
+body.mobile .header h2 { font-weight:700; letter-spacing:-.02em; }
+body.mobile .sec-title { font-weight:700; letter-spacing:-.01em; }
+body.mobile .qbtn { border-color: var(--border); box-shadow: none; }
+body.mobile .ov2-side { border-radius: 14px; }
+body.mobile .pomo { border-radius: 14px; }

@@ -40,6 +40,13 @@
   <div id="screen"></div>
 </div>
 
+<nav class="mobile-tabbar" id="mobileTabbar" aria-label="主导航">
+  <button class="mobile-tab" data-mobile-go="home" aria-label="今天"><span class="mobile-tab-icon"></span><span>今天</span></button>
+  <button class="mobile-tab" data-mobile-go="todo" aria-label="任务"><span class="mobile-tab-icon"></span><span>任务</span></button>
+  <button class="mobile-tab" data-mobile-go="schedule" aria-label="日程"><span class="mobile-tab-icon"></span><span>日程</span></button>
+  <button class="mobile-tab" data-mobile-more="true" aria-label="更多"><span class="mobile-tab-icon"></span><span>更多</span></button>
+</nav>
+
 <!-- drawer scrim -->
 <div class="scrim" id="scrim"></div>
 
@@ -47,7 +54,7 @@
 <aside class="drawer" id="drawer">
   <div class="dh">
     <button class="dclose" id="drawerClose" aria-label="关闭菜单"></button>
-    <div class="brand" id="drawerBrand" title="点击更换头像（自动压缩 ≤256×256 JPEG 85%）"><img src="assets/avatar.jpg?v=2" alt="头像" id="avaImg"/><span class="brand-cam" id="avaCam"></span></div>
+    <div class="brand" id="drawerBrand" title="点击更换头像（自动压缩 ≤256×256 JPEG 85%）"><img src="assets/avatar.jpg" alt="头像" id="avaImg"/><span class="brand-cam" id="avaCam"></span></div>
     <input type="file" id="avatarInput" accept="image/*" hidden/>
     <div><h2 id="brandName">我的工作台</h2><p id="brandSlogan">Personal Workbench</p></div>
   </div>
